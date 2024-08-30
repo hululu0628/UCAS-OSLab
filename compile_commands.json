@@ -1,0 +1,102 @@
+[
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-o",
+            "build/main",
+            "arch/riscv/bios/common.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "arch/riscv/bios/common.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-o",
+            "build/main",
+            "libs/string.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "libs/string.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-o",
+            "build/main",
+            "init/main.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "init/main.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-o",
+            "build/main",
+            "kernel/loader/loader.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "kernel/loader/loader.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-o",
+            "build/main",
+            "arch/riscv/kernel/head.S"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "arch/riscv/kernel/head.S"
+    }
+]

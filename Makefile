@@ -106,6 +106,8 @@ ELF_CREATEIMAGE = $(DIR_BUILD)/$(notdir $(SRC_CREATEIMAGE:.c=))
 
 all: dirs elf image asm # floppy
 
+only_on_qemu: elf gen_image run
+
 dirs:
 	@mkdir -p $(DIR_BUILD)
 
@@ -160,6 +162,9 @@ elf: $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 
 $(ELF_CREATEIMAGE): $(SRC_CREATEIMAGE)
 	$(HOST_CC) $(SRC_CREATEIMAGE) -o $@ -ggdb -Wall
+
+gen_image:
+	cd $(DIR_BUILD) && ./createimage --extended bootblock main && cd ..
 
 image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
