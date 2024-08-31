@@ -4,7 +4,6 @@
 #include <type.h>
 
 
-
 uint64_t load_task_img(int taskid)
 {
 	/**
@@ -12,6 +11,7 @@ uint64_t load_task_img(int taskid)
 	* 1. [p1-task3] load task from image via task id, and return its entrypoint
 	* 2. [p1-task4] load task via task name, thus the arg should be 'char *taskname'
 	*/
-	bios_sd_read(TASK_MEM_BASE,tasks[taskid].block_num,tasks[taskid].block_id);
+	bios_sd_read(task_addr,tasks[taskid].block_num,tasks[taskid].block_id);
+	task_addr += TASK_SIZE;
 	return TASK_MEM_BASE;
 }

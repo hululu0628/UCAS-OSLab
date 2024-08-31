@@ -13,6 +13,8 @@ char buf[VERSION_BUF];
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
+unsigned task_addr = (unsigned)TASK_MEM_BASE;
+
 int tasknum;
 
 static int bss_check(void)
@@ -106,6 +108,7 @@ int main(void)
 					{
 						funpt = (int (*)(void))load_task_img(taskid);
 						funpt();
+						task_addr -= TASK_SIZE;
 						break;
 					}
 					taskid++;
