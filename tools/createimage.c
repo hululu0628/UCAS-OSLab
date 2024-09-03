@@ -102,8 +102,6 @@ static void create_image(int nfiles, char *files[])
 	/* for each input file */
 	for (int fidx = 0, tidx = -2; fidx < nfiles; ++fidx, ++tidx) {
 
-		int taskidx = fidx - 2;
-
 		/* open input file */
 		fp = fopen(*files, "r");
 		assert(fp != NULL);

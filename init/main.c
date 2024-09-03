@@ -4,6 +4,8 @@
 #include <os/task.h>
 #include <os/string.h>
 #include <os/loader.h>
+#include <os/pipe.h>
+#include <os/batch.h>
 #include <type.h>
 
 #define VERSION_BUF 50
@@ -50,6 +52,81 @@ static void init_task_info(void)
 
 }
 
+//(for p1-t5)
+static void init_pipe_info(void)
+{
+	char** pipe_ptr;
+	pipe_ptr = (char **)PIPE_HEAD_ADDR;
+	*pipe_ptr = (char *)PIPE_BUFFER_ADDR;
+	**pipe_ptr = 0;
+	pipe_ptr = (char **)PIPE_TAIL_ADDR;
+	*pipe_ptr = (char *)PIPE_BUFFER_ADDR;
+}
+//测试用批处理
+void batch_sh(task_queue *array, int *taskhead)
+{
+	int taskid = 0;
+	while (taskid < tasknum) {
+		if (strcmp(tasks[taskid].filename, "printstr") == 0)
+		{
+			array[*taskhead].taskid = taskid;
+			array[*taskhead].object_file = (char)(TERMINAL_OUT | PIPE_IN);
+			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+			(*taskhead)++;
+			if (*taskhead == TASK_MAXNUM)
+				*taskhead = 0;
+			break;
+		}
+		taskid++;
+	}
+	taskid = 0;
+
+	while (taskid < tasknum) {
+		if (strcmp(tasks[taskid].filename, "strsort") == 0)
+		{
+			array[*taskhead].taskid = taskid;
+			array[*taskhead].object_file = (char)(PIPE_IN | PIPE_OUT);
+			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+			(*taskhead)++;
+			if (*taskhead == TASK_MAXNUM)
+				*taskhead = 0;
+			break;
+		}
+		taskid++;
+	}
+	taskid = 0;
+
+	while (taskid < tasknum) {
+		if (strcmp(tasks[taskid].filename, "duplication") == 0)
+		{
+			array[*taskhead].taskid = taskid;
+			array[*taskhead].object_file = (char)(PIPE_IN | PIPE_OUT);
+			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+			(*taskhead)++;
+			if (*taskhead == TASK_MAXNUM)
+				*taskhead = 0;
+			break;
+		}
+		taskid++;
+	}
+	taskid = 0;
+
+	while (taskid < tasknum) {
+		if (strcmp(tasks[taskid].filename, "format") == 0)
+		{
+			array[*taskhead].taskid = taskid;
+			array[*taskhead].object_file = (char)(TERMINAL_IN | PIPE_OUT);
+			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+			(*taskhead)++;
+			if (*taskhead == TASK_MAXNUM)
+				*taskhead = 0;
+			break;
+		}
+		taskid++;
+	}
+	taskid = 0;
+}
+
 /************************************************************/
 /* Do not touch this comment. Reserved for future projects. */
 /************************************************************/
@@ -64,6 +141,9 @@ int main(void)
 
 	// Init task information (〃'▽'〃)
 	init_task_info();
+
+	// Init pipe information ○|￣|_
+	init_pipe_info();
 
 	// Output 'Hello OS!', bss check result and OS version
 	char output_str[] = "bss check: _ version: _\n\r";
@@ -89,8 +169,11 @@ int main(void)
 	//   and then execute them.
 	int taskid = 0;
 	int c;
-	int (*funpt)(void);
+	task_queue taskqueue[TASK_MAXNUM];
+	int taskhead = 0, tasktail = 0;
+	task_crtl_info* ctrl_adr = (task_crtl_info *)PROGRAM_CONTROL_ADDR;
 	i = 0;
+	//需要添加队列，标记待运行程序；需要添加批处理文件判断
 	while(1)
 	{
 		if(i < 49)
@@ -102,20 +185,28 @@ int main(void)
 
 				bios_putchar(10);
 				
-				while(taskid < tasknum)
+				if(strcmp(buf,"batch")==0)
+					batch_sh(taskqueue, &taskhead);
+				else
 				{
-					if(strcmp(tasks[taskid].filename, buf)==0)
+					while(taskid < tasknum)
 					{
-						funpt = (int (*)(void))load_task_img(taskid);
-						funpt();
-						task_addr -= TASK_SIZE;
-						break;
+						if(buf[0] && (strcmp(tasks[taskid].filename, buf)==0))
+						{
+							taskqueue[taskhead].taskid = taskid;
+							taskqueue[taskhead].object_file = (char)(TERMINAL_IN | TERMINAL_OUT);
+							taskqueue[taskhead].p = (int (*)(void))load_task_img(taskid);
+							taskhead++;
+							if(taskhead == TASK_MAXNUM)
+								taskhead = 0;
+							break;
+						}
+						taskid++;
 					}
-					taskid++;
+					if(buf[0] && (taskid >= tasknum))
+						bios_putstr("ERROR:no such task\n\r");
+					taskid = 0;
 				}
-				if(taskid >= tasknum)
-					bios_putstr("ERROR:no such task\n\r");
-				taskid = 0;
 			}
 			else if(c != -1)
 			{
@@ -128,6 +219,17 @@ int main(void)
 			bios_putstr("\n\rWARNING: the name is too long\n\r");
 			i = 0;
 		}
+
+		while(taskhead != tasktail)
+		{
+			(*ctrl_adr).io_d = taskqueue[tasktail].object_file;
+			(taskqueue[tasktail].p)();
+			task_addr -= TASK_SIZE;
+			tasktail++;
+			if(tasktail == TASK_MAXNUM)
+				tasktail = 0;
+		}
+
 	}
 
 	// Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)

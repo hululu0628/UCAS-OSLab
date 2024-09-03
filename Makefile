@@ -32,7 +32,7 @@ MINICOM         = minicom
 # Build/Debug Flags and Variables
 # -----------------------------------------------------------------------
 
-CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3
+CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3
 
 BOOT_INCLUDE    = -I$(DIR_ARCH)/include
 BOOT_CFLAGS     = $(CFLAGS) $(BOOT_INCLUDE) -Wl,--defsym=TEXT_START=$(BOOTLOADER_ENTRYPOINT) -T riscv.lds
@@ -122,7 +122,7 @@ asm: $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 	for elffile in $^; do $(OBJDUMP) -d $$elffile > $(notdir $$elffile).txt; done
 
 gdb:
-	$(GDB) $(ELF_MAIN) -ex "target remote:1234"
+	$(GDB) ./build/main -ex "target remote:1234"
 
 run:
 	$(QEMU) $(QEMU_OPTS)
