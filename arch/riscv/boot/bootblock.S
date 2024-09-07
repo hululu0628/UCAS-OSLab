@@ -36,6 +36,7 @@ main:
 	jal 	bios_func_entry
 
 	// TODO: [p1-task4] load task-related arguments and pass them to kernel
+	// 将image最后的数据搬运到0x50200200
 	li 	a0,taskinfo_sec_num
 	lw 	a2,0(a0)
 	li 	a0,taskinfo

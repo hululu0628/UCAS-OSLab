@@ -20,11 +20,9 @@ EMPBSS:
 	sd 	t4,32(sp)
 	sd	t5,40(sp)
 	sd 	t6,48(sp)
-	sd 	ra,56(sp)
 	/* TODO: [p1-task3] enter main function */
 	jal 	main
 	/* TODO: [p1-task3] finish task and return to the kernel, replace this in p3-task2! */
-	ld 	ra,56(sp)
 	ld 	t6,48(sp)
 	ld 	t5,40(sp)
 	ld	t4,32(sp)

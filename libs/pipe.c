@@ -4,7 +4,7 @@
 #include <os/kernel.h>
 #include <os/pipe.h>
 
-//未实现队列阻塞,不能实时共享指针数据
+/*以下三个函数用于测试程序*/
 void bp_putchar(int ch)
 {
 	task_crtl_info info;

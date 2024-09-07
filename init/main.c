@@ -4,8 +4,8 @@
 #include <os/task.h>
 #include <os/string.h>
 #include <os/loader.h>
-#include <os/pipe.h>
-#include <os/batch.h>
+#include <os/pipe.h>		//约定了存放字符串的位置和大小，以及指向存放队列的两个指针
+#include <os/batch.h>		//batch_sh函数声明，以及task_queue的定义
 #include <type.h>
 
 #define VERSION_BUF 50
@@ -66,6 +66,7 @@ static void init_pipe_info(void)
 void batch_sh(task_queue *array, int *taskhead)
 {
 	int taskid = 0;
+	//加载四个程序，并将相关信息存入array
 	while (taskid < tasknum) {
 		if (strcmp(tasks[taskid].filename, "printstr") == 0)
 		{
@@ -173,7 +174,7 @@ int main(void)
 	int taskhead = 0, tasktail = 0;
 	task_crtl_info* ctrl_adr = (task_crtl_info *)PROGRAM_CONTROL_ADDR;
 	i = 0;
-	//需要添加队列，标记待运行程序；需要添加批处理文件判断
+
 	while(1)
 	{
 		if(i < 49)
@@ -191,6 +192,7 @@ int main(void)
 				{
 					while(taskid < tasknum)
 					{
+						//load one task
 						if(buf[0] && (strcmp(tasks[taskid].filename, buf)==0))
 						{
 							taskqueue[taskhead].taskid = taskid;
@@ -220,6 +222,7 @@ int main(void)
 			i = 0;
 		}
 
+		//call a program
 		while(taskhead != tasktail)
 		{
 			(*ctrl_adr).io_d = taskqueue[tasktail].object_file;
