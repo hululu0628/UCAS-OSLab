@@ -15,7 +15,6 @@ char buf[VERSION_BUF];
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
-unsigned task_addr = (unsigned)TASK_MEM_BASE;
 
 int tasknum;
 
@@ -175,6 +174,7 @@ int main(void)
 	task_crtl_info* ctrl_adr = (task_crtl_info *)PROGRAM_CONTROL_ADDR;
 	i = 0;
 
+ 
 	while(1)
 	{
 		if(i < 49)
@@ -206,28 +206,36 @@ int main(void)
 						taskid++;
 					}
 					if(buf[0] && (taskid >= tasknum))
-						bios_putstr("ERROR:no such task\n\r");
+						bios_putstr("\033[31mERROR:\033[0m no such task\n\r");
 					taskid = 0;
 				}
 			}
 			else if(c != -1)
 			{
-				bios_putchar(c);
-				buf[i++] = c;
+				if(c != 127)
+				{
+					bios_putchar(c);
+					buf[i++] = c;
+				}
+				else
+				{
+					if(i > 0)
+						buf[--i] = '\0';
+					bios_putstr("\b \b");
+				}
 			}
 		}
 		else
 		{
-			bios_putstr("\n\rWARNING: the name is too long\n\r");
+			bios_putstr("\n\r\033[33mWARNING:\033[0m the name is too long\n\r");
 			i = 0;
 		}
 
-		//call a program
+		//call a program in taskqueue
 		while(taskhead != tasktail)
 		{
 			(*ctrl_adr).io_d = taskqueue[tasktail].object_file;
 			(taskqueue[tasktail].p)();
-			task_addr -= TASK_SIZE;
 			tasktail++;
 			if(tasktail == TASK_MAXNUM)
 				tasktail = 0;

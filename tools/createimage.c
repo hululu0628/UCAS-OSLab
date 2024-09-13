@@ -2,8 +2,10 @@
 #include <elf.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #define IMAGE_FILE "./image"
@@ -25,9 +27,9 @@
 /* TODO: [p1-task4] design your own task_info_t */
 // Bytes
 typedef struct {
-	int block_id;
-	int block_num;
-	char filename[MAXFILENAME];
+	uint32_t block_id;
+	uint32_t block_num;
+	uint8_t filename[MAXFILENAME];
 } task_info_t;
 
 #define TASK_MAXNUM 16

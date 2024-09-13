@@ -14,13 +14,11 @@
 
 /* TODO: [p1-task4] implement your own task_info_t! */
 typedef struct {
-	int block_id;
-	int block_num;
-	char filename[MAXFILENAME];
+	uint32_t block_id;
+	uint32_t block_num;
+	uint8_t filename[MAXFILENAME];
 } task_info_t;
 
 extern task_info_t tasks[TASK_MAXNUM];
-
-extern unsigned task_addr;
 
 #endif
