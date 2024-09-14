@@ -12,6 +12,7 @@ FLAT:
 	addi 	a0,a0,1
 	blt 	a0,a1,FLAT
 EMPBSS:
+	# save t0~t7, ra (a0~a7 not saved, but there's no mistake)
 	addi 	sp,sp,-64
 	sd 	t0,0(sp)
 	sd 	t1,8(sp)

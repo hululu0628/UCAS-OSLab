@@ -40,7 +40,7 @@ main:
 	li 	a0,taskinfo_sec_num	# where the task information start, in 0x502001f8
 	lw 	a2,0(a0)
 	li 	a0,taskinfo		# move data to 0x50200200
-	li 	a1,1			# size of task information(less than one sector)
+	li 	a1,1			# size of task information(less than one sector), occupies 1 sector
 	li 	a7,11			# call bios_sd_read
 	jal 	bios_func_entry
 

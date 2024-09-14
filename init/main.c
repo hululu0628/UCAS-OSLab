@@ -179,24 +179,29 @@ int main(void)
 	{
 		if(i < 49)
 		{
-			if((c=bios_getchar())==13)	//press enter
+			if((c=bios_getchar())==13)	// press Enter
 			{
+				// refresh buff
 				buf[i] = '\0';
 				i = 0;
 
-				bios_putchar(10);
+				bios_putchar(10);	// move the cursor to the next line
 				
-				if(strcmp(buf,"batch")==0)
+				if(strcmp(buf,"batch")==0)	// p1-task5: batch
 					batch_sh(taskqueue, &taskhead);
 				else
 				{
 					while(taskid < tasknum)
 					{
-						//load one task
+						// if buf[0] == '\0' while (tasks[taskid].filename)[0] == '\0'
+						// the taskqueue should not be updated
 						if(buf[0] && (strcmp(tasks[taskid].filename, buf)==0))
 						{
+							// update the queue
 							taskqueue[taskhead].taskid = taskid;
+							// The targets of both input and output are terminals
 							taskqueue[taskhead].object_file = (char)(TERMINAL_IN | TERMINAL_OUT);
+							// load program from SD card
 							taskqueue[taskhead].p = (int (*)(void))load_task_img(taskid);
 							taskhead++;
 							if(taskhead == TASK_MAXNUM)
@@ -219,6 +224,7 @@ int main(void)
 				}
 				else
 				{
+					// after pressing Backspace
 					if(i > 0)
 						buf[--i] = '\0';
 					bios_putstr("\b \b");
@@ -231,10 +237,14 @@ int main(void)
 			i = 0;
 		}
 
-		//call a program in taskqueue
+		// check the queue
+		// if there are pending tasks, excute in turn
 		while(taskhead != tasktail)
 		{
+			// Based on the value of the contents of the address
+			// function in pipe.c determines the targets of both input and output
 			(*ctrl_adr).io_d = taskqueue[tasktail].object_file;
+			// jump to the entry point of the program
 			(taskqueue[tasktail].p)();
 			tasktail++;
 			if(tasktail == TASK_MAXNUM)

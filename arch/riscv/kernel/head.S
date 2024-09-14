@@ -15,18 +15,18 @@ ENTRY(_start)
 	csrw CSR_SIP, zero
 
   /* TODO: [p1-task2] clear BSS for flat non-ELF images */
-	la 	a0,__bss_start
+	la 	a0,__bss_start	
 	la 	a1,__BSS_END__
 	bge 	a0,a1,EMPBSS
 FLAT:
 	sb 	zero,(a0)
 	addi 	a0,a0,1
-	blt 	a0,a1,FLAT
+	blt 	a0,a1,FLAT		
 EMPBSS:
   /* TODO: [p1-task2] setup C environment */
-	li 	sp,KERNEL_STACK
-	li 	fp,KERNEL_STACK
-	j 	main
+	li 	sp,KERNEL_STACK		# set kernel stack pointer to 0x50500000
+	li 	fp,KERNEL_STACK		# not using fp, but still initialising it
+	j 	main			# jump to kernel, no need to return
 
 loop:
 	wfi

@@ -102,6 +102,8 @@ static void create_image(int nfiles, char *files[])
 	assert(img != NULL);
 
 	/* for each input file */
+	// tidx == -2: *files == "bootblock"
+	// tidx == -1: *files == "main"
 	for (int fidx = 0, tidx = -2; fidx < nfiles; ++fidx, ++tidx) {
 
 		/* open input file */
@@ -112,6 +114,7 @@ static void create_image(int nfiles, char *files[])
 		read_ehdr(&ehdr, fp);
 		printf("0x%04lx: %s\n", ehdr.e_entry, *files);
 
+		// after_addr - before_addr == 某程序所占空间
 		before_addr = phyaddr;
 
 		/* for each program header */
@@ -242,13 +245,20 @@ static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
 	// NOTE: os size, infomation about app-info sector(s) ...
 	//os size in 0x1fc, app num in 0x1fe(p1-task3)
 
+	// store the information about programs in ""./test/test_project1" at the end of the image
 	fwrite(taskinfo,sizeof(task_info_t),tasknum,img);
 
+	// write data to the last few bytes of the first sector
 	fseek(img,TASK_INFO_OFFSET,SEEK_SET);
-	fwrite(&secnum,sizeof(int),1,img);
+	// total sectors, occupies 4 bytes
+	fwrite(&secnum,sizeof(uint32_t),1,img);
+	// number of sectors occupied by the kernel
+	// occupies 2 bytes
+	// place in little-endian
 	fputc(NBYTES2SEC(nbytes_kernel),img);
 	fputc(NBYTES2SEC(nbytes_kernel)>>8,img);
-	fwrite(&tasknum,2,1,img);
+	// total number of programs, occupies 2 bytes
+	fwrite(&tasknum,sizeof(uint16_t),1,img);
 
 	//debug
 	//printf("tasknum:\t\t%d\n",tasknum);
