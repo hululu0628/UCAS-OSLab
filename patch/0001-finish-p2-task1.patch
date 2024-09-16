@@ -1,0 +1,1959 @@
+From e5e5736f4720b6a6af45e39738f75f95d82ea852 Mon Sep 17 00:00:00 2001
+From: Xianan Zhu <zhuxianan22@mails.ucas.ac.cn>
+Date: Mon, 16 Sep 2024 12:33:15 +0000
+Subject: [PATCH] finish p2-task1
+
+---
+ Makefile                    |   9 +-
+ arch/riscv/crt0/crt0.S      |  57 +++--
+ arch/riscv/kernel/entry.S   | 126 ++++++----
+ compile_commands.json       | 475 ++++++++++++++++++++++++++++++++----
+ include/os/kernel.h         |   4 +-
+ include/os/list.h           |  11 +-
+ include/os/loader.h         |   2 +
+ include/os/sched.h          |  63 ++---
+ init/main.c                 | 376 ++++++++++------------------
+ kernel/loader/loader.c      |  12 +
+ kernel/sched/list.c         |  39 +++
+ kernel/sched/sched.c        |  29 ++-
+ test/test_project2/fly.c    |   2 +-
+ test/test_project2/fly1.c   |   4 +-
+ test/test_project2/fly2.c   |   4 +-
+ test/test_project2/fly3.c   |   4 +-
+ test/test_project2/fly4.c   |   4 +-
+ test/test_project2/fly5.c   |   4 +-
+ test/test_project2/print1.c |   2 +-
+ test/test_project2/print2.c |   2 +-
+ tiny_libc/include/kernel.h  |   4 +-
+ tiny_libc/syscall.c         |  52 ++--
+ 22 files changed, 848 insertions(+), 437 deletions(-)
+ create mode 100644 kernel/sched/list.c
+
+diff --git a/Makefile b/Makefile
+index 3495da1..3da6d59 100644
+--- a/Makefile
++++ b/Makefile
+@@ -33,8 +33,8 @@ MINICOM         = minicom
+ # Build/Debug Flags and Variables
+ # -----------------------------------------------------------------------
+ 
+-CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3
+-# CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany
++# CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3
++CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany
+ 
+ BOOT_INCLUDE    = -I$(DIR_ARCH)/include
+ BOOT_CFLAGS     = $(CFLAGS) $(BOOT_INCLUDE) -Wl,--defsym=TEXT_START=$(BOOTLOADER_ENTRYPOINT) -T riscv.lds
+@@ -138,6 +138,10 @@ gdb:
+ run:
+ 	$(QEMU) $(QEMU_OPTS)
+ 
++# display cursor after running
++runc: run
++	echo -e "\033[?25h" && clear
++
+ debug:
+ 	$(QEMU) $(QEMU_OPTS) $(QEMU_DEBUG_OPT)
+ 
+@@ -187,3 +191,4 @@ image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
+ 	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
+ 
+ .PHONY: image
++
+diff --git a/arch/riscv/crt0/crt0.S b/arch/riscv/crt0/crt0.S
+index fd42ce2..f00a5e3 100644
+--- a/arch/riscv/crt0/crt0.S
++++ b/arch/riscv/crt0/crt0.S
+@@ -4,6 +4,25 @@
+ ENTRY(_start)
+ 
+ 	/* TODO: [p1-task3] setup C runtime environment for the user program */
++	# save t0~t6, a0~a7, ra
++	addi 	sp,sp,-128
++	sd 	ra,0(sp)
++	sd 	t0,8(sp)
++	sd 	t1,16(sp)
++	sd 	t2,24(sp)
++	sd 	t3,32(sp)
++	sd 	t4,40(sp)
++	sd	t5,48(sp)
++	sd 	t6,56(sp)
++	sd 	a0,64(sp)
++	sd 	a1,72(sp)
++	sd 	a2,80(sp)
++	sd 	a3,88(sp)
++	sd 	a4,96(sp)
++	sd	a5,104(sp)
++	sd 	a6,112(sp)
++	sd 	a7,120(sp)
++
+ 	la 	a0,__bss_start
+ 	la 	a1,__BSS_END__
+ 	bge 	a0,a1,EMPBSS
+@@ -12,29 +31,27 @@ FLAT:
+ 	addi 	a0,a0,1
+ 	blt 	a0,a1,FLAT
+ EMPBSS:
+-	# save t0~t7, ra (a0~a7 not saved, but there's no mistake)
+-	addi 	sp,sp,-64
+-	sd 	t0,0(sp)
+-	sd 	t1,8(sp)
+-	sd 	t2,16(sp)
+-	sd 	t3,24(sp)
+-	sd 	t4,32(sp)
+-	sd	t5,40(sp)
+-	sd 	t6,48(sp)
+-	sd 	ra,56(sp)
++
+ 	/* TODO: [p1-task3] enter main function */
+ 	jal 	main
+ 	/* TODO: [p1-task3] finish task and return to the kernel, replace this in p3-task2! */
+-	ld 	ra,56(sp)
+-	ld 	t6,48(sp)
+-	ld 	t5,40(sp)
+-	ld	t4,32(sp)
+-	ld 	t3,24(sp)
+-	ld 	t2,16(sp)
+-	ld 	t1,8(sp)
+-	ld 	t0,0(sp)
+-	addi 	sp,sp,64
+-	ret
++	ld 	a7,120(sp)
++	ld 	a6,112(sp)
++	ld 	a5,104(sp)
++	ld 	a4,96(sp)
++	ld 	a3,88(sp)
++	ld 	a2,80(sp)
++	ld 	a1,72(sp)
++	ld 	a0,64(sp)
++	ld 	t6,56(sp)
++	ld 	t5,48(sp)
++	ld	t4,40(sp)
++	ld 	t3,32(sp)
++	ld 	t2,24(sp)
++	ld 	t1,16(sp)
++	ld 	t0,8(sp)
++	ld 	ra,0(sp)
++	addi 	sp,sp,128
+ 	/************************************************************/
+ 		/* Do not touch this comment. Reserved for future projects. */
+ 		/************************************************************/
+diff --git a/arch/riscv/kernel/entry.S b/arch/riscv/kernel/entry.S
+index 8b39941..117fb77 100644
+--- a/arch/riscv/kernel/entry.S
++++ b/arch/riscv/kernel/entry.S
+@@ -3,83 +3,119 @@
+ #include <asm/regs.h>
+ 
+ .macro SAVE_CONTEXT
+-  /* TODO: [p2-task3] save all general purpose registers here! */
+-  /* HINT: Pay attention to the function of tp and sp, and save them carefully! */
++	/* TODO: [p2-task3] save all general purpose registers here! */
++	/* HINT: Pay attention to the function of tp and sp, and save them carefully! */
+ 
+-  /*
+-   * Disable user-mode memory access as it should only be set in the
+-   * actual user copy routines.
+-   *
+-   * Disable the FPU to detect illegal usage of floating point in kernel
+-   * space.
+-   */
+-  li t0, SR_SUM | SR_FS
++	/*
++	* Disable user-mode memory access as it should only be set in the
++	* actual user copy routines.
++	*
++	* Disable the FPU to detect illegal usage of floating point in kernel
++	* space.
++	*/
++	li t0, SR_SUM | SR_FS
+ 
+-  /* TODO: [p2-task3] save sstatus, sepc, stval and scause on kernel stack */
++	/* TODO: [p2-task3] save sstatus, sepc, stval and scause on kernel stack */
+ 
+ .endm
+ 
+ .macro RESTORE_CONTEXT
+-  /* TODO: Restore all general purpose registers and sepc, sstatus */
+-  /* HINT: Pay attention to sp again! */
++	/* TODO: Restore all general purpose registers and sepc, sstatus */
++	/* HINT: Pay attention to sp again! */
+ .endm
+ 
+ ENTRY(enable_preempt)
+-  not t0, x0
+-  csrs CSR_SIE, t0
+-  jr ra
++	not t0, x0
++	csrs CSR_SIE, t0
++	jr ra
+ ENDPROC(enable_preempt)
+ 
+ ENTRY(disable_preempt)
+-  csrw CSR_SIE, zero
+-  jr ra
++	csrw CSR_SIE, zero
++	jr ra
+ ENDPROC(disable_preempt)
+ 
+ ENTRY(enable_interrupt)
+-  li t0, SR_SIE
+-  csrs CSR_SSTATUS, t0
+-  jr ra
++	li t0, SR_SIE
++	csrs CSR_SSTATUS, t0
++	jr ra
+ ENDPROC(enable_interrupt)
+ 
+ ENTRY(disable_interrupt)
+-  li t0, SR_SIE
+-  csrc CSR_SSTATUS, t0
+-  jr ra
++	li t0, SR_SIE
++	csrc CSR_SSTATUS, t0
++	jr ra
+ ENDPROC(disable_interrupt)
+ 
+-// NOTE: the address of previous pcb in a0
+-// NOTE: the address of next pcb in a1
++	// NOTE: the address of previous pcb in a0
++	// NOTE: the address of next pcb in a1
++	// process switch from a0 to a1
+ ENTRY(switch_to)
+-  addi sp, sp, -(SWITCH_TO_SIZE)
+-
+-  /* TODO: [p2-task1] save all callee save registers on kernel stack,
+-   * see the definition of `struct switchto_context` in sched.h*/
+-
+-  /* TODO: [p2-task1] restore all callee save registers from kernel stack,
+-   * see the definition of `struct switchto_context` in sched.h*/
+-
+-  addi sp, sp, SWITCH_TO_SIZE
+-  jr ra
++	addi sp, sp, -(SWITCH_TO_SIZE)
++
++	/* TODO: [p2-task1] save all callee save registers on kernel stack,
++	* see the definition of `struct switchto_context` in sched.h*/
++	sd 	ra,0(sp)
++	sd 	t0,8(sp)
++	sd 	t1,16(sp)
++	sd 	t2,24(sp)
++	sd 	t3,32(sp)
++	sd 	t4,40(sp)
++	sd	t5,48(sp)
++	sd 	t6,56(sp)
++	sd 	a0,64(sp)
++	sd 	a1,72(sp)
++	sd 	a2,80(sp)
++	sd 	a3,88(sp)
++	sd 	a4,96(sp)
++	sd	a5,104(sp)
++	sd 	a6,112(sp)
++	sd 	a7,120(sp)
++
++	sd 	sp,0(a0)	# update kernel sp in prev pcb
++	ld 	sp,0(a1)	# switch to next pcb's kernel sp
++
++	/* TODO: [p2-task1] restore all callee save registers from kernel stack,
++	* see the definition of `struct switchto_context` in sched.h*/
++	ld 	a7,120(sp)
++	ld 	a6,112(sp)
++	ld 	a5,104(sp)
++	ld 	a4,96(sp)
++	ld 	a3,88(sp)
++	ld 	a2,80(sp)
++	ld 	a1,72(sp)
++	ld 	a0,64(sp)
++	ld 	t6,56(sp)
++	ld 	t5,48(sp)
++	ld	t4,40(sp)
++	ld 	t3,32(sp)
++	ld 	t2,24(sp)
++	ld 	t1,16(sp)
++	ld 	t0,8(sp)
++	ld 	ra,0(sp)
++
++	addi sp, sp, SWITCH_TO_SIZE
++	jr ra
+ ENDPROC(switch_to)
+ 
+ ENTRY(ret_from_exception)
+-  /* TODO: [p2-task3] restore context via provided macro and return to sepc */
+-  /* HINT: remember to check your sp, does it point to the right address? */
++	/* TODO: [p2-task3] restore context via provided macro and return to sepc */
++	/* HINT: remember to check your sp, does it point to the right address? */
+ ENDPROC(ret_from_exception)
+ 
+ ENTRY(exception_handler_entry)
+ 
+-  /* TODO: [p2-task3] save context via the provided macro */
++	/* TODO: [p2-task3] save context via the provided macro */
+ 
+ 
+-  /* TODO: [p2-task3] load ret_from_exception into $ra so that we can return to
+-   * ret_from_exception when interrupt_help complete.
+-   */
++	/* TODO: [p2-task3] load ret_from_exception into $ra so that we can return to
++	* ret_from_exception when interrupt_help complete.
++	*/
+ 
+ 
+-  /* TODO: [p2-task3] call interrupt_helper
+-   * NOTE: don't forget to pass parameters for it.
+-   */
++	/* TODO: [p2-task3] call interrupt_helper
++	* NOTE: don't forget to pass parameters for it.
++	*/
+ 
+ 
+ ENDPROC(exception_handler_entry)
+diff --git a/compile_commands.json b/compile_commands.json
+index 1e0911c..e8ea382 100644
+--- a/compile_commands.json
++++ b/compile_commands.json
+@@ -20,6 +20,66 @@
+         "directory": "/home/stu/oslab/zhuxianan22",
+         "file": "arch/riscv/boot/bootblock.S"
+     },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "./build/crt0.o",
++            "-o",
++            "build/print1",
++            "test/test_project2/print1.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "test/test_project2/print1.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "./build/crt0.o",
++            "-o",
++            "build/fly2",
++            "test/test_project2/fly2.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "test/test_project2/fly2.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "./build/crt0.o",
++            "-o",
++            "build/timer",
++            "test/test_project2/timer.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "test/test_project2/timer.c"
++    },
+     {
+         "arguments": [
+             "riscv64-unknown-linux-gnu-gcc",
+@@ -33,12 +93,13 @@
+             "-ggdb3",
+             "-I./arch/riscv/include",
+             "-Iinclude",
++            "-Idrivers",
+             "-o",
+             "build/main",
+-            "libs/string.c"
++            "init/main.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "libs/string.c"
++        "file": "init/main.c"
+     },
+     {
+         "arguments": [
+@@ -53,12 +114,45 @@
+             "-ggdb3",
+             "-I./arch/riscv/include",
+             "-Iinclude",
++            "-Idrivers",
+             "-o",
+             "build/main",
+-            "arch/riscv/bios/common.c"
++            "libs/printk.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "arch/riscv/bios/common.c"
++        "file": "libs/printk.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "-o",
++            "build/printf.o",
++            "tiny_libc/printf.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "tiny_libc/printf.c"
++    },
++    {
++        "arguments": [
++            "gcc",
++            "-c",
++            "-ggdb",
++            "-Wall",
++            "-o",
++            "build/createimage",
++            "tools/createimage.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "tools/createimage.c"
+     },
+     {
+         "arguments": [
+@@ -73,12 +167,13 @@
+             "-ggdb3",
+             "-I./arch/riscv/include",
+             "-Iinclude",
++            "-Idrivers",
+             "-o",
+             "build/main",
+-            "libs/pipe.c"
++            "kernel/sched/time.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "libs/pipe.c"
++        "file": "kernel/sched/time.c"
+     },
+     {
+         "arguments": [
+@@ -94,11 +189,11 @@
+             "-I./tiny_libc/include",
+             "./build/crt0.o",
+             "-o",
+-            "build/bss",
+-            "test/test_project1/bss.c"
++            "build/lock1",
++            "test/test_project2/lock1.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/bss.c"
++        "file": "test/test_project2/lock1.c"
+     },
+     {
+         "arguments": [
+@@ -111,14 +206,15 @@
+             "-Wall",
+             "-mcmodel=medany",
+             "-ggdb3",
+-            "-I./tiny_libc/include",
+-            "./build/crt0.o",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
+             "-o",
+-            "build/auipc",
+-            "test/test_project1/auipc.c"
++            "build/main",
++            "libs/pipe.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/auipc.c"
++        "file": "libs/pipe.c"
+     },
+     {
+         "arguments": [
+@@ -134,11 +230,11 @@
+             "-I./tiny_libc/include",
+             "./build/crt0.o",
+             "-o",
+-            "build/format",
+-            "test/test_project1/format.c"
++            "build/fly5",
++            "test/test_project2/fly5.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/format.c"
++        "file": "test/test_project2/fly5.c"
+     },
+     {
+         "arguments": [
+@@ -154,11 +250,32 @@
+             "-I./tiny_libc/include",
+             "./build/crt0.o",
+             "-o",
+-            "build/strsort",
+-            "test/test_project1/strsort.c"
++            "build/print2",
++            "test/test_project2/print2.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/strsort.c"
++        "file": "test/test_project2/print2.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "kernel/sched/list.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "kernel/sched/list.c"
+     },
+     {
+         "arguments": [
+@@ -174,11 +291,11 @@
+             "-I./tiny_libc/include",
+             "./build/crt0.o",
+             "-o",
+-            "build/duplication",
+-            "test/test_project1/duplication.c"
++            "build/fly4",
++            "test/test_project2/fly4.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/duplication.c"
++        "file": "test/test_project2/fly4.c"
+     },
+     {
+         "arguments": [
+@@ -193,12 +310,76 @@
+             "-ggdb3",
+             "-I./arch/riscv/include",
+             "-Iinclude",
++            "-Idrivers",
+             "-o",
+             "build/main",
+-            "init/main.c"
++            "kernel/sched/sched.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "init/main.c"
++        "file": "kernel/sched/sched.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "arch/riscv/kernel/entry.S"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "arch/riscv/kernel/entry.S"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "kernel/loader/loader.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "kernel/loader/loader.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "kernel/mm/mm.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "kernel/mm/mm.c"
+     },
+     {
+         "arguments": [
+@@ -220,6 +401,27 @@
+         "directory": "/home/stu/oslab/zhuxianan22",
+         "file": "arch/riscv/crt0/crt0.S"
+     },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "kernel/locking/lock.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "kernel/locking/lock.c"
++    },
+     {
+         "arguments": [
+             "riscv64-unknown-linux-gnu-gcc",
+@@ -234,24 +436,112 @@
+             "-I./tiny_libc/include",
+             "./build/crt0.o",
+             "-o",
+-            "build/data",
+-            "test/test_project1/data.c"
++            "build/lock2",
++            "test/test_project2/lock2.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/data.c"
++        "file": "test/test_project2/lock2.c"
+     },
+     {
+         "arguments": [
+-            "gcc",
++            "riscv64-unknown-linux-gnu-gcc",
+             "-c",
+-            "-ggdb",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
+             "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
+             "-o",
+-            "build/createimage",
+-            "tools/createimage.c"
++            "build/main",
++            "arch/riscv/kernel/trap.S"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "tools/createimage.c"
++        "file": "arch/riscv/kernel/trap.S"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "-o",
++            "build/syscall.o",
++            "tiny_libc/syscall.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "tiny_libc/syscall.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "-o",
++            "build/string.o",
++            "tiny_libc/string.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "tiny_libc/string.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "kernel/irq/irq.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "kernel/irq/irq.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "arch/riscv/bios/common.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "arch/riscv/bios/common.c"
+     },
+     {
+         "arguments": [
+@@ -267,11 +557,51 @@
+             "-I./tiny_libc/include",
+             "./build/crt0.o",
+             "-o",
+-            "build/printstr",
+-            "test/test_project1/printstr.c"
++            "build/fly",
++            "test/test_project2/fly.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "test/test_project2/fly.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "-o",
++            "build/time.o",
++            "tiny_libc/time.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "tiny_libc/time.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "drivers/screen.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/printstr.c"
++        "file": "drivers/screen.c"
+     },
+     {
+         "arguments": [
+@@ -287,11 +617,11 @@
+             "-I./tiny_libc/include",
+             "./build/crt0.o",
+             "-o",
+-            "build/2048",
+-            "test/test_project1/2048.c"
++            "build/fly3",
++            "test/test_project2/fly3.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "test/test_project1/2048.c"
++        "file": "test/test_project2/fly3.c"
+     },
+     {
+         "arguments": [
+@@ -306,12 +636,13 @@
+             "-ggdb3",
+             "-I./arch/riscv/include",
+             "-Iinclude",
++            "-Idrivers",
+             "-o",
+             "build/main",
+-            "kernel/loader/loader.c"
++            "kernel/syscall/syscall.c"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+-        "file": "kernel/loader/loader.c"
++        "file": "kernel/syscall/syscall.c"
+     },
+     {
+         "arguments": [
+@@ -326,11 +657,73 @@
+             "-ggdb3",
+             "-I./arch/riscv/include",
+             "-Iinclude",
++            "-Idrivers",
+             "-o",
+             "build/main",
+             "arch/riscv/kernel/head.S"
+         ],
+         "directory": "/home/stu/oslab/zhuxianan22",
+         "file": "arch/riscv/kernel/head.S"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "./build/crt0.o",
++            "-o",
++            "build/sleep",
++            "test/test_project2/sleep.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "test/test_project2/sleep.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./tiny_libc/include",
++            "./build/crt0.o",
++            "-o",
++            "build/fly1",
++            "test/test_project2/fly1.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "test/test_project2/fly1.c"
++    },
++    {
++        "arguments": [
++            "riscv64-unknown-linux-gnu-gcc",
++            "-c",
++            "-O0",
++            "-fno-builtin",
++            "-nostdlib",
++            "-nostdinc",
++            "-Wall",
++            "-mcmodel=medany",
++            "-ggdb3",
++            "-I./arch/riscv/include",
++            "-Iinclude",
++            "-Idrivers",
++            "-o",
++            "build/main",
++            "libs/string.c"
++        ],
++        "directory": "/home/stu/oslab/zhuxianan22",
++        "file": "libs/string.c"
+     }
+ ]
+\ No newline at end of file
+diff --git a/include/os/kernel.h b/include/os/kernel.h
+index 3d1dead..417fb17 100644
+--- a/include/os/kernel.h
++++ b/include/os/kernel.h
+@@ -20,7 +20,9 @@ typedef enum {
+     MUTEX_INIT,
+     MUTEX_ACQ,
+     MUTEX_RELEASE,
+-    NUM_ENTRIES
++    NUM_ENTRIES,
++    WRITE,
++    FLUSH
+ } jmptab_idx_t;
+ 
+ static inline long call_jmptab(long which, long arg0, long arg1, long arg2, long arg3, long arg4)
+diff --git a/include/os/list.h b/include/os/list.h
+index 49f9ea9..80f5581 100644
+--- a/include/os/list.h
++++ b/include/os/list.h
+@@ -43,13 +43,22 @@
+ typedef struct list_node
+ {
+     struct list_node *next, *prev;
++    ptr_t pcb_ptr;		// find the pcb quickly
+ } list_node_t;
+ 
+ typedef list_node_t list_head;
+ 
+ // LIST_HEAD is used to define the head of a list.
+-#define LIST_HEAD(name) struct list_node name = {&(name), &(name)}
++#define LIST_HEAD(name) struct list_node name = {&(name), &(name), (ptr_t)NULL}
+ 
+ /* TODO: [p2-task1] implement your own list API */
+ 
++void addToReadyQueue(list_node_t * listnode);
++
++void deleteReadyHead();
++
++void allocReadyProcess();
++
++ptr_t getProcess();
++
+ #endif
+diff --git a/include/os/loader.h b/include/os/loader.h
+index 55bdb3e..77dde53 100644
+--- a/include/os/loader.h
++++ b/include/os/loader.h
+@@ -5,4 +5,6 @@
+ 
+ uint64_t load_task_img(int taskid);
+ 
++uint64_t load_task_img_by_name(char * str);
++
+ #endif
+\ No newline at end of file
+diff --git a/include/os/sched.h b/include/os/sched.h
+index e0046fe..c1b4828 100644
+--- a/include/os/sched.h
++++ b/include/os/sched.h
+@@ -37,53 +37,56 @@
+ /* used to save register infomation */
+ typedef struct regs_context
+ {
+-    /* Saved main processor registers.*/
+-    reg_t regs[32];
+-
+-    /* Saved special registers. */
+-    reg_t sstatus;
+-    reg_t sepc;
+-    reg_t sbadaddr;
+-    reg_t scause;
++	/* Saved main processor registers.*/
++	reg_t regs[32];
++
++	/* Saved special registers. */
++	reg_t sstatus;
++	reg_t sepc;
++	reg_t sbadaddr;
++	reg_t scause;
+ } regs_context_t;
+ 
+ /* used to save register infomation in switch_to */
+ typedef struct switchto_context
+ {
+-    /* Callee saved registers.*/
+-    reg_t regs[14];
++	/* Callee saved registers.*/
++	// 0~13: ra, t0~t6, a0~a7
++	reg_t regs[14];
+ } switchto_context_t;
+ 
+ typedef enum {
+-    TASK_BLOCKED,
+-    TASK_RUNNING,
+-    TASK_READY,
+-    TASK_EXITED,
++	TASK_BLOCKED,
++	TASK_RUNNING,
++	TASK_READY,
++	TASK_EXITED,
+ } task_status_t;
+ 
+ /* Process Control Block */
+ typedef struct pcb
+ {
+-    /* register context */
+-    // NOTE: this order must be preserved, which is defined in regs.h!!
+-    reg_t kernel_sp;
+-    reg_t user_sp;
++	/* register context */
++	// NOTE: this order must be preserved, which is defined in regs.h!!
++	reg_t kernel_sp;
++	reg_t user_sp;
+ 
+-    /* previous, next pointer */
+-    list_node_t list;
++	/* previous, next pointer */
++	list_node_t list;
+ 
+-    /* process id */
+-    pid_t pid;
++	struct pcb * pcb_ptr;
+ 
+-    /* BLOCK | READY | RUNNING */
+-    task_status_t status;
++	/* process id */
++	pid_t pid;
+ 
+-    /* cursor position */
+-    int cursor_x;
+-    int cursor_y;
++	/* BLOCK | READY | RUNNING */
++	task_status_t status;
+ 
+-    /* time(seconds) to wake up sleeping PCB */
+-    uint64_t wakeup_time;
++	/* cursor position */
++	int cursor_x;
++	int cursor_y;
++
++	/* time(seconds) to wake up sleeping PCB */
++	uint64_t wakeup_time;
+ 
+ } pcb_t;
+ 
+@@ -97,7 +100,7 @@ extern list_head sleep_queue;
+ register pcb_t * current_running asm("tp");
+ extern pid_t process_id;
+ 
+-extern pcb_t pcb[NUM_MAX_TASK];
++extern pcb_t pcb[NUM_MAX_TASK]; 	// pid from 1 to 16
+ extern pcb_t pid0_pcb;
+ extern const ptr_t pid0_stack;
+ 
+diff --git a/init/main.c b/init/main.c
+index e52737e..d55f370 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -4,6 +4,7 @@
+ #include <os/loader.h>
+ #include <os/irq.h>
+ #include <os/sched.h>
++#include <os/list.h>
+ #include <os/lock.h>
+ #include <os/kernel.h>
+ #include <os/task.h>
+@@ -24,44 +25,34 @@ extern void ret_from_exception();
+ // Task info array
+ task_info_t tasks[TASK_MAXNUM];
+ 
++char buf[50];
++
+ int tasknum;
+ 
+-static int bss_check(void)
+-{
+-	for (int i = 0; i < VERSION_BUF; ++i)
+-	{
+-		if (buf[i] != 0)
+-		{
+-		return 0;
+-		}
+-	}
+-	return 1;
+-}
+ 
+ static void init_jmptab(void)
+ {
+ 	volatile long (*(*jmptab))() = (volatile long (*(*))())KERNEL_JMPTAB_BASE;
+ 
+-	jmptab[CONSOLE_PUTSTR]  = (long (*)())port_write;
+-	jmptab[CONSOLE_PUTCHAR] = (long (*)())port_write_ch;
+-	jmptab[CONSOLE_GETCHAR] = (long (*)())port_read_ch;
+-	jmptab[SD_READ]         = (long (*)())sd_read;
+-    jmptab[CONSOLE_PUTSTR]  = (long (*)())port_write;
+-    jmptab[CONSOLE_PUTCHAR] = (long (*)())port_write_ch;
+-    jmptab[CONSOLE_GETCHAR] = (long (*)())port_read_ch;
+-    jmptab[SD_READ]         = (long (*)())sd_read;
+-    jmptab[SD_WRITE]        = (long (*)())sd_write;
+-    jmptab[QEMU_LOGGING]    = (long (*)())qemu_logging;
+-    jmptab[SET_TIMER]       = (long (*)())set_timer;
+-    jmptab[READ_FDT]        = (long (*)())read_fdt;
+-    jmptab[MOVE_CURSOR]     = (long (*)())screen_move_cursor;
+-    jmptab[PRINT]           = (long (*)())printk;
+-    jmptab[YIELD]           = (long (*)())do_scheduler;
+-    jmptab[MUTEX_INIT]      = (long (*)())do_mutex_lock_init;
+-    jmptab[MUTEX_ACQ]       = (long (*)())do_mutex_lock_acquire;
+-    jmptab[MUTEX_RELEASE]   = (long (*)())do_mutex_lock_release;
+-
+-    // TODO: [p2-task1] (S-core) initialize system call table.
++    	jmptab[CONSOLE_PUTSTR]  = (long (*)())port_write;
++    	jmptab[CONSOLE_PUTCHAR] = (long (*)())port_write_ch;
++    	jmptab[CONSOLE_GETCHAR] = (long (*)())port_read_ch;
++    	jmptab[SD_READ]         = (long (*)())sd_read;
++    	jmptab[SD_WRITE]        = (long (*)())sd_write;
++    	jmptab[QEMU_LOGGING]    = (long (*)())qemu_logging;
++    	jmptab[SET_TIMER]       = (long (*)())set_timer;
++    	jmptab[READ_FDT]        = (long (*)())read_fdt;
++    	jmptab[MOVE_CURSOR]     = (long (*)())screen_move_cursor;
++    	jmptab[PRINT]           = (long (*)())printk;
++    	jmptab[YIELD]           = (long (*)())do_scheduler;
++    	jmptab[MUTEX_INIT]      = (long (*)())do_mutex_lock_init;
++    	jmptab[MUTEX_ACQ]       = (long (*)())do_mutex_lock_acquire;
++    	jmptab[MUTEX_RELEASE]   = (long (*)())do_mutex_lock_release;
++
++	// TODO: [p2-task1] (S-core) initialize system call table.
++	// 
++	jmptab[WRITE]		= (long (*)())screen_write;
++	jmptab[FLUSH]		= (long (*)())screen_reflush;
+ 
+ }
+ 
+@@ -77,6 +68,7 @@ static void init_task_info(void)
+ }
+ 
+ //(for p1-t5)
++/*
+ static void init_pipe_info(void)
+ {
+ 	char** pipe_ptr;
+@@ -86,114 +78,102 @@ static void init_pipe_info(void)
+ 	pipe_ptr = (char **)PIPE_TAIL_ADDR;
+ 	*pipe_ptr = (char *)PIPE_BUFFER_ADDR;
+ }
+-//测试用批处理
+-void batch_sh(task_queue *array, int *taskhead)
+-{
+-	int taskid = 0;
+-	//加载四个程序，并将相关信息存入array
+-	while (taskid < tasknum) {
+-		if (strcmp(tasks[taskid].filename, "printstr") == 0)
+-		{
+-			array[*taskhead].taskid = taskid;
+-			array[*taskhead].object_file = (char)(TERMINAL_OUT | PIPE_IN);
+-			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+-			(*taskhead)++;
+-			if (*taskhead == TASK_MAXNUM)
+-				*taskhead = 0;
+-			break;
+-		}
+-		taskid++;
+-	}
+-	taskid = 0;
+-
+-	while (taskid < tasknum) {
+-		if (strcmp(tasks[taskid].filename, "strsort") == 0)
+-		{
+-			array[*taskhead].taskid = taskid;
+-			array[*taskhead].object_file = (char)(PIPE_IN | PIPE_OUT);
+-			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+-			(*taskhead)++;
+-			if (*taskhead == TASK_MAXNUM)
+-				*taskhead = 0;
+-			break;
+-		}
+-		taskid++;
+-	}
+-	taskid = 0;
+-
+-	while (taskid < tasknum) {
+-		if (strcmp(tasks[taskid].filename, "duplication") == 0)
+-		{
+-			array[*taskhead].taskid = taskid;
+-			array[*taskhead].object_file = (char)(PIPE_IN | PIPE_OUT);
+-			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+-			(*taskhead)++;
+-			if (*taskhead == TASK_MAXNUM)
+-				*taskhead = 0;
+-			break;
+-		}
+-		taskid++;
+-	}
+-	taskid = 0;
+-
+-	while (taskid < tasknum) {
+-		if (strcmp(tasks[taskid].filename, "format") == 0)
+-		{
+-			array[*taskhead].taskid = taskid;
+-			array[*taskhead].object_file = (char)(TERMINAL_IN | PIPE_OUT);
+-			array[*taskhead].p = (int (*)(void))load_task_img(taskid);
+-			(*taskhead)++;
+-			if (*taskhead == TASK_MAXNUM)
+-				*taskhead = 0;
+-			break;
+-		}
+-		taskid++;
+-	}
+-	taskid = 0;
+-}
++*/
++
+ 
+ /************************************************************/
+ static void init_pcb_stack(
+     ptr_t kernel_stack, ptr_t user_stack, ptr_t entry_point,
+     pcb_t *pcb)
+ {
+-     /* TODO: [p2-task3] initialization of registers on kernel stack
+-      * HINT: sp, ra, sepc, sstatus
+-      * NOTE: To run the task in user mode, you should set corresponding bits
+-      *     of sstatus(SPP, SPIE, etc.).
+-      */
+-    regs_context_t *pt_regs =
+-        (regs_context_t *)(kernel_stack - sizeof(regs_context_t));
+-
+-
+-    /* TODO: [p2-task1] set sp to simulate just returning from switch_to
+-     * NOTE: you should prepare a stack, and push some values to
+-     * simulate a callee-saved context.
+-     */
+-    switchto_context_t *pt_switchto =
+-        (switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
+-
++	/* TODO: [p2-task3] initialization of registers on kernel stack
++	* HINT: sp, ra, sepc, sstatus
++	* NOTE: To run the task in user mode, you should set corresponding bits
++	*     of sstatus(SPP, SPIE, etc.).
++	*/
++	regs_context_t *pt_regs =
++		(regs_context_t *)(kernel_stack - sizeof(regs_context_t));
++
++
++	/* TODO: [p2-task1] set sp to simulate just returning from switch_to
++	* NOTE: you should prepare a stack, and push some values to
++	* simulate a callee-saved context.
++	*/
++	switchto_context_t *pt_switchto =
++		(switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
++
++	pt_switchto->regs[0] = entry_point;
++	pt_switchto->regs[1] = 0;
++	pt_switchto->regs[2] = 0;
++	pt_switchto->regs[3] = 0;
++	pt_switchto->regs[4] = 0;
++	pt_switchto->regs[5] = 0;
++	pt_switchto->regs[6] = 0;
++	pt_switchto->regs[7] = 0;
++	pt_switchto->regs[8] = 0;
++	pt_switchto->regs[9] = 0;
++	pt_switchto->regs[10] = 0;
++	pt_switchto->regs[11] = 0;
++	pt_switchto->regs[12] = 0;
++	pt_switchto->regs[13] = 0;
++
++	pcb->kernel_sp = (reg_t)pt_switchto;
++	pcb->user_sp = (reg_t)pt_switchto;
+ }
+ 
+ static void init_pcb(void)
+ {
+-    /* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
++	/* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
++	int i;
++	for(i = 0; i < NUM_MAX_TASK; i++)
++	{
++		pcb[i].pid = i + 1;
++		pcb[i].list.prev = NULL;
++		pcb[i].list.next = NULL;
++		pcb[i].list.pcb_ptr = (ptr_t)&pcb[i];
++		pcb[i].status = TASK_EXITED;
++	}
++
++	pid0_pcb.status = TASK_RUNNING;
+ 
++	ptr_t entrypoint;
++	ptr_t kernel_stack,usr_stack;
+ 
+-    /* TODO: [p2-task1] remember to initialize 'current_running' */
++	entrypoint = load_task_img_by_name("print1");
++	kernel_stack = allocKernelPage(1);
++	usr_stack = kernel_stack;
++	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[0]);
++	pcb[0].status = TASK_READY;
++
++	entrypoint = load_task_img_by_name("print2");
++	kernel_stack = allocKernelPage(1);
++	usr_stack = kernel_stack;
++	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[1]);
++	pcb[1].status = TASK_READY;
++
++	entrypoint = load_task_img_by_name("fly");
++	kernel_stack = allocKernelPage(1);
++	usr_stack = kernel_stack;
++	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[2]);
++	pcb[2].status = TASK_READY;
++
++	/* TODO: [p2-task1] remember to initialize 'current_running' */
++
++	current_running = &pid0_pcb;
++	process_id = pid0_pcb.pid;
++
++	allocReadyProcess();
+ 
+ }
+ 
+ static void init_syscall(void)
+ {
+-    // TODO: [p2-task3] initialize system call table.
++	// TODO: [p2-task3] initialize system call table.
+ }
+ /************************************************************/
+ 
+ int main(void)
+ {
+-	// Check whether .bss section is set to zero
+-	int check = bss_check();
+ 
+ 	// Init jump table provided by kernel and bios(ΦωΦ)
+ 	init_jmptab();
+@@ -201,159 +181,53 @@ int main(void)
+ 	// Init task information (〃'▽'〃)
+ 	init_task_info();
+ 
+-	// Init pipe information ○|￣|_
+-	init_pipe_info();
+-
+-	// Output 'Hello OS!', bss check result and OS version
+-	char output_str[] = "bss check: _ version: _\n\r";
+-	char output_val[2] = {0};
+-	int i, output_val_pos = 0;
+-
+-	output_val[0] = check ? 't' : 'f';
+-	output_val[1] = version + '0';
+-	for (i = 0; i < sizeof(output_str); ++i)
+-	{
+-		buf[i] = output_str[i];
+-		if (buf[i] == '_')
+-		{
+-		buf[i] = output_val[output_val_pos++];
+-		}
+-	}
+-
++	// Output 'Hello OS!'
+ 	bios_putstr("Hello OS!\n\r");
+-	bios_putstr(buf);
+ 	
+-    // Init Process Control Blocks |•'-'•) ✧
+-    init_pcb();
+-    printk("> [INIT] PCB initialization succeeded.\n");
+ 
+-    // Read CPU frequency (｡•ᴗ-)_
+-    time_base = bios_read_fdt(TIMEBASE);
++	// Init Process Control Blocks |•'-'•) ✧
++	init_pcb();
++	printk("> [INIT] PCB initialization succeeded.\n");
+ 
+-    // Init lock mechanism o(´^｀)o
+-    init_locks();
+-    printk("> [INIT] Lock mechanism initialization succeeded.\n");
++	// Read CPU frequency (｡•ᴗ-)_
++	time_base = bios_read_fdt(TIMEBASE);
+ 
+-    // Init interrupt (^_^)
+-    init_exception();
+-    printk("> [INIT] Interrupt processing initialization succeeded.\n");
++	// Init lock mechanism o(´^｀)o
++	init_locks();
++	printk("> [INIT] Lock mechanism initialization succeeded.\n");
+ 
+-    // Init system call table (0_0)
+-    init_syscall();
+-    printk("> [INIT] System call initialized successfully.\n");
++	// Init interrupt (^_^)
++	init_exception();
++	printk("> [INIT] Interrupt processing initialization succeeded.\n");
+ 
+-    // Init screen (QAQ)
+-    init_screen();
+-    printk("> [INIT] SCREEN initialization succeeded.\n");
++	// Init system call table (0_0)
++	init_syscall();
++	printk("> [INIT] System call initialized successfully.\n");
+ 
+-    // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
+-    // NOTE: The function of sstatus.sie is different from sie's
++	// Init screen (QAQ)
++	init_screen();
++	printk("> [INIT] SCREEN initialization succeeded.\n");
++
++	// TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
++	// NOTE: The function of sstatus.sie is different from sie's
+     
+ 
+ 
+ 	// TODO: Load tasks by either task id [p1-task3] or task name [p1-task4],
+ 	//   and then execute them.
+-	int taskid = 0;
+-	int c;
+-	task_queue taskqueue[TASK_MAXNUM];
+-	int taskhead = 0, tasktail = 0;
+-	task_crtl_info* ctrl_adr = (task_crtl_info *)PROGRAM_CONTROL_ADDR;
+-	i = 0;
+-
+- 
+-	while(1)
+-	{
+-		if(i < 49)
+-		{
+-			if((c=bios_getchar())==13)	// press Enter
+-			{
+-				// refresh buff
+-				buf[i] = '\0';
+-				i = 0;
+-
+-				bios_putchar(10);	// move the cursor to the next line
+-				
+-				if(strcmp(buf,"batch")==0)	// p1-task5: batch
+-					batch_sh(taskqueue, &taskhead);
+-				else
+-				{
+-					while(taskid < tasknum)
+-					{
+-						// if buf[0] == '\0' while (tasks[taskid].filename)[0] == '\0'
+-						// the taskqueue should not be updated
+-						if(buf[0] && (strcmp(tasks[taskid].filename, buf)==0))
+-						{
+-							// update the queue
+-							taskqueue[taskhead].taskid = taskid;
+-							// The targets of both input and output are terminals
+-							taskqueue[taskhead].object_file = (char)(TERMINAL_IN | TERMINAL_OUT);
+-							// load program from SD card
+-							taskqueue[taskhead].p = (int (*)(void))load_task_img(taskid);
+-							taskhead++;
+-							if(taskhead == TASK_MAXNUM)
+-								taskhead = 0;
+-							break;
+-						}
+-						taskid++;
+-					}
+-					if(buf[0] && (taskid >= tasknum))
+-						bios_putstr("\033[31mERROR:\033[0m no such task\n\r");
+-					taskid = 0;
+-				}
+-			}
+-			else if(c != -1)
+-			{
+-				if(c != 127)
+-				{
+-					bios_putchar(c);
+-					buf[i++] = c;
+-				}
+-				else
+-				{
+-					// after pressing Backspace
+-					if(i > 0)
+-						buf[--i] = '\0';
+-					bios_putstr("\b \b");
+-				}
+-			}
+-		}
+-		else
+-		{
+-			bios_putstr("\n\r\033[33mWARNING:\033[0m the name is too long\n\r");
+-			i = 0;
+-		}
+-
+-		// check the queue
+-		// if there are pending tasks, excute in turn
+-		while(taskhead != tasktail)
+-		{
+-			// Based on the value of the contents of the address
+-			// function in pipe.c determines the targets of both input and output
+-			(*ctrl_adr).io_d = taskqueue[tasktail].object_file;
+-			// jump to the entry point of the program
+-			(taskqueue[tasktail].p)();
+-			tasktail++;
+-			if(tasktail == TASK_MAXNUM)
+-				tasktail = 0;
+-		}
+ 
+-	}
++
+ 
+ 	// Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
+ 	while (1)
+ 	{
+-		asm volatile("wfi");
++		// If you do non-preemptive scheduling, it's used to surrender control
++		do_scheduler();
++
++		// If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
++		// enable_preempt();
++		// asm volatile("wfi");
+ 	}
+-    // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
+-    while (1)
+-    {
+-        // If you do non-preemptive scheduling, it's used to surrender control
+-        do_scheduler();
+-
+-        // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
+-        // enable_preempt();
+-        // asm volatile("wfi");
+-    }
+ 
+ 	return 0;
+ }
+diff --git a/kernel/loader/loader.c b/kernel/loader/loader.c
+index 570d714..3e9d042 100644
+--- a/kernel/loader/loader.c
++++ b/kernel/loader/loader.c
+@@ -15,4 +15,16 @@ uint64_t load_task_img(int taskid)
+ 	// APP X starts from (0x52000000 + X * 0x10000)
+ 	bios_sd_read((TASK_MEM_BASE + taskid * TASK_SIZE),tasks[taskid].block_num,tasks[taskid].block_id);
+ 	return (TASK_MEM_BASE + taskid * TASK_SIZE);
++}
++
++uint64_t load_task_img_by_name(char * str)
++{
++	for(int i = 0; i < TASK_MAXNUM; i++)
++	{
++		if(strcmp(tasks[i].filename,str)==0)
++		{
++			bios_sd_read((TASK_MEM_BASE + i * TASK_SIZE),tasks[i].block_num,tasks[i].block_id);
++			return (TASK_MEM_BASE + i * TASK_SIZE);
++		}
++	}
+ }
+\ No newline at end of file
+diff --git a/kernel/sched/list.c b/kernel/sched/list.c
+new file mode 100644
+index 0000000..fe7d485
+--- /dev/null
++++ b/kernel/sched/list.c
+@@ -0,0 +1,39 @@
++#include <os/list.h>
++#include <os/sched.h>
++void addToReadyQueue(list_node_t * listnode)
++{
++	(ready_queue.prev)->next = listnode;
++	listnode->prev = ready_queue.prev;
++	listnode->next = &ready_queue;
++	ready_queue.prev = listnode;
++}
++
++void deleteReadyHead()
++{
++	// need comments //
++	if(ready_queue.next != &ready_queue)
++	{
++		ready_queue.next = ready_queue.next->next;
++		ready_queue.next->prev->next = NULL;
++		ready_queue.next->prev->prev = NULL;
++		ready_queue.next->prev = &ready_queue;
++	}
++}
++
++void allocReadyProcess()
++{
++	int i;
++	for(i=0; i < NUM_MAX_TASK; i++)
++	{
++		if(pcb[i].status == TASK_READY)
++			addToReadyQueue(&pcb[i].list);
++	}
++}
++
++ptr_t getProcess()
++{
++	if(ready_queue.next != &ready_queue)
++		return ready_queue.next->pcb_ptr;
++	else
++		return (ptr_t)(&pid0_pcb);
++}
+\ No newline at end of file
+diff --git a/kernel/sched/sched.c b/kernel/sched/sched.c
+index 1923b19..8f966a1 100644
+--- a/kernel/sched/sched.c
++++ b/kernel/sched/sched.c
+@@ -10,9 +10,9 @@
+ pcb_t pcb[NUM_MAX_TASK];
+ const ptr_t pid0_stack = INIT_KERNEL_STACK + PAGE_SIZE;
+ pcb_t pid0_pcb = {
+-    .pid = 0,
+-    .kernel_sp = (ptr_t)pid0_stack,
+-    .user_sp = (ptr_t)pid0_stack
++	.pid = 0,
++	.kernel_sp = (ptr_t)pid0_stack,
++	.user_sp = (ptr_t)pid0_stack
+ };
+ 
+ LIST_HEAD(ready_queue);
+@@ -23,17 +23,28 @@ pid_t process_id = 1;
+ 
+ void do_scheduler(void)
+ {
+-    // TODO: [p2-task3] Check sleep queue to wake up PCBs
++	// TODO: [p2-task3] Check sleep queue to wake up PCBs
+ 
+-    /************************************************************/
+-    /* Do not touch this comment. Reserved for future projects. */
+-    /************************************************************/
++	/************************************************************/
++	/* Do not touch this comment. Reserved for future projects. */
++	/************************************************************/
+ 
+-    // TODO: [p2-task1] Modify the current_running pointer.
++	// TODO: [p2-task1] Modify the current_running pointer.
++	pcb_t * prev_process = current_running;
++	if(current_running->status == TASK_RUNNING)
++	{
++		current_running->status = TASK_READY;
+ 
++		if(current_running != &pid0_pcb)
++			addToReadyQueue(&current_running->list);
+ 
+-    // TODO: [p2-task1] switch_to current_running
++		current_running = (pcb_t *)getProcess();
++		current_running->status = TASK_RUNNING;
++		deleteReadyHead();
++	}
+ 
++	// TODO: [p2-task1] switch_to current_running
++	switch_to(prev_process,current_running);
+ }
+ 
+ void do_sleep(uint32_t sleep_time)
+diff --git a/test/test_project2/fly.c b/test/test_project2/fly.c
+index bebf96e..29ac957 100644
+--- a/test/test_project2/fly.c
++++ b/test/test_project2/fly.c
+@@ -46,7 +46,7 @@ int main(void)
+             sys_move_cursor(i, j + 6);
+             printf("%s", plane7);
+         }
+-        // sys_yield();
++        sys_yield();
+ 
+         sys_move_cursor(0, j + 0);
+         printf("%s", blank);
+diff --git a/test/test_project2/fly1.c b/test/test_project2/fly1.c
+index 48f8855..fb61d6c 100644
+--- a/test/test_project2/fly1.c
++++ b/test/test_project2/fly1.c
+@@ -23,7 +23,7 @@ int main(void)
+     {
+         int clk = sys_get_tick();
+         remain_length = 10;
+-        sys_set_sche_workload(remain_length);
++        // sys_set_sche_workload(remain_length);
+ 
+         for (int i = 50 * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
+         {
+@@ -41,7 +41,7 @@ int main(void)
+                 // sys_yield();
+                 // for (int j=0;j<200000;j++); // wait
+                 if (remain_length) remain_length--;
+-                sys_set_sche_workload(remain_length);
++                // sys_set_sche_workload(remain_length);
+             }
+         }
+         // sys_yield();
+diff --git a/test/test_project2/fly2.c b/test/test_project2/fly2.c
+index 9b0746d..f941ae1 100644
+--- a/test/test_project2/fly2.c
++++ b/test/test_project2/fly2.c
+@@ -23,7 +23,7 @@ int main(void)
+     {
+         int clk = sys_get_tick();
+         remain_length = 20;
+-        sys_set_sche_workload(remain_length);
++        // sys_set_sche_workload(remain_length);
+ 
+         for (int i = 40 * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
+         {
+@@ -41,7 +41,7 @@ int main(void)
+                 // sys_yield();
+                 // for (int j=0;j<200000;j++); // wait
+                 if (remain_length) remain_length--;
+-                sys_set_sche_workload(remain_length);
++                // sys_set_sche_workload(remain_length);
+             }
+         }
+         // sys_yield();
+diff --git a/test/test_project2/fly3.c b/test/test_project2/fly3.c
+index 528ba48..1fe7193 100644
+--- a/test/test_project2/fly3.c
++++ b/test/test_project2/fly3.c
+@@ -23,7 +23,7 @@ int main(void)
+     {
+         int clk = sys_get_tick();
+         remain_length = 30;
+-        sys_set_sche_workload(remain_length);
++        // sys_set_sche_workload(remain_length);
+ 
+         for (int i = 30 * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
+         {
+@@ -41,7 +41,7 @@ int main(void)
+                 // sys_yield();
+                 // for (int j=0;j<200000;j++); // wait
+                 if (remain_length) remain_length--;
+-                sys_set_sche_workload(remain_length);
++                // sys_set_sche_workload(remain_length);
+             }
+         }
+         // sys_yield();
+diff --git a/test/test_project2/fly4.c b/test/test_project2/fly4.c
+index e05e725..ec249d0 100644
+--- a/test/test_project2/fly4.c
++++ b/test/test_project2/fly4.c
+@@ -23,7 +23,7 @@ int main(void)
+     {
+         int clk = sys_get_tick();
+         remain_length = 40;
+-        sys_set_sche_workload(remain_length);
++        // sys_set_sche_workload(remain_length);
+ 
+         for (int i = 20 * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
+         {
+@@ -41,7 +41,7 @@ int main(void)
+                 // sys_yield();
+                 // for (int j=0;j<200000;j++); // wait
+                 if (remain_length) remain_length--;
+-                sys_set_sche_workload(remain_length);
++                // sys_set_sche_workload(remain_length);
+             }
+         }
+         // sys_yield();
+diff --git a/test/test_project2/fly5.c b/test/test_project2/fly5.c
+index 6b617da..5bfb84a 100644
+--- a/test/test_project2/fly5.c
++++ b/test/test_project2/fly5.c
+@@ -23,7 +23,7 @@ int main(void)
+     {
+         int clk = sys_get_tick();
+         remain_length = 50;
+-        sys_set_sche_workload(remain_length);
++        // sys_set_sche_workload(remain_length);
+ 
+         for (int i = 10 * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
+         {
+@@ -41,7 +41,7 @@ int main(void)
+                 // sys_yield();
+                 // for (int j=0;j<200000;j++); // wait
+                 if (remain_length) remain_length--;
+-                sys_set_sche_workload(remain_length);
++                // sys_set_sche_workload(remain_length);
+             }
+         }
+         // sys_yield();
+diff --git a/test/test_project2/print1.c b/test/test_project2/print1.c
+index 141b24d..cb84cc6 100644
+--- a/test/test_project2/print1.c
++++ b/test/test_project2/print1.c
+@@ -10,7 +10,7 @@ int main(void)
+     {
+         sys_move_cursor(0, print_location);
+         printf("> [TASK] This task is to test scheduler. (%d)", i);
+-        // sys_yield();
++        sys_yield();
+     }
+ }
+ 
+diff --git a/test/test_project2/print2.c b/test/test_project2/print2.c
+index 31faa17..47d6913 100644
+--- a/test/test_project2/print2.c
++++ b/test/test_project2/print2.c
+@@ -10,7 +10,7 @@ int main(void)
+     {
+         sys_move_cursor(0, print_location);
+         printf("> [TASK] This task is to test scheduler. (%d)", i);
+-        // sys_yield();
++        sys_yield();
+     }
+ }
+ 
+diff --git a/tiny_libc/include/kernel.h b/tiny_libc/include/kernel.h
+index 6c635ec..f7c6c4d 100644
+--- a/tiny_libc/include/kernel.h
++++ b/tiny_libc/include/kernel.h
+@@ -19,7 +19,9 @@ typedef enum {
+     MUTEX_INIT,
+     MUTEX_ACQ,
+     MUTEX_RELEASE,
+-    NUM_ENTRIES
++    NUM_ENTRIES,
++    WRITE,
++    FLUSH
+ } jmptab_idx_t;
+ 
+ 
+diff --git a/tiny_libc/syscall.c b/tiny_libc/syscall.c
+index 3a4af91..0ffaad5 100644
+--- a/tiny_libc/syscall.c
++++ b/tiny_libc/syscall.c
+@@ -8,70 +8,76 @@ static const long IGNORE = 0L;
+ static long invoke_syscall(long sysno, long arg0, long arg1, long arg2,
+                            long arg3, long arg4)
+ {
+-    /* TODO: [p2-task3] implement invoke_syscall via inline assembly */
+-    asm volatile("nop");
++	/* TODO: [p2-task3] implement invoke_syscall via inline assembly */
++	asm volatile("nop");
+ 
+-    return 0;
++	return 0;
+ }
+ 
+ void sys_yield(void)
+ {
+-    /* TODO: [p2-task1] call call_jmptab to implement sys_yield */
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_yield */
++	/* TODO: [p2-task1] call call_jmptab to implement sys_yield */
++	call_jmptab(YIELD,0,0,0,0,0);
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_yield */
+ }
+ 
+ void sys_move_cursor(int x, int y)
+ {
+-    /* TODO: [p2-task1] call call_jmptab to implement sys_move_cursor */
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_move_cursor */
++	/* TODO: [p2-task1] call call_jmptab to implement sys_move_cursor */
++	call_jmptab(MOVE_CURSOR,(long)x,(long)y,0,0,0);
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_move_cursor */
+ }
+ 
+ void sys_write(char *buff)
+ {
+-    /* TODO: [p2-task1] call call_jmptab to implement sys_write */
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_write */
++	/* TODO: [p2-task1] call call_jmptab to implement sys_write */
++	// function we need is screen_write
++	call_jmptab(WRITE,(long)buff,0,0,0,0);
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_write */
+ }
+ 
+ void sys_reflush(void)
+ {
+-    /* TODO: [p2-task1] call call_jmptab to implement sys_reflush */
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_reflush */
++	/* TODO: [p2-task1] call call_jmptab to implement sys_reflush */
++	// function we need is screen_flush
++	call_jmptab(FLUSH,0,0,0,0,0);
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_reflush */
+ }
+ 
+ int sys_mutex_init(int key)
+ {
+-    /* TODO: [p2-task2] call call_jmptab to implement sys_mutex_init */
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_init */
+-    return 0;
++	/* TODO: [p2-task2] call call_jmptab to implement sys_mutex_init */
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_init */
++	return 0;
+ }
+ 
+ void sys_mutex_acquire(int mutex_idx)
+ {
+-    /* TODO: [p2-task2] call call_jmptab to implement sys_mutex_acquire */
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_acquire */
++	/* TODO: [p2-task2] call call_jmptab to implement sys_mutex_acquire */
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_acquire */
+ }
+ 
+ void sys_mutex_release(int mutex_idx)
+ {
+-    /* TODO: [p2-task2] call call_jmptab to implement sys_mutex_release */
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_release */
++	/* TODO: [p2-task2] call call_jmptab to implement sys_mutex_release */
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_release */
+ }
+ 
+ long sys_get_timebase(void)
+ {
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_get_timebase */
+-    return 0;
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_get_timebase */
++	return 0;
+ }
+ 
+ long sys_get_tick(void)
+ {
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_get_tick */
+-    return 0;
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_get_tick */
++	return 0;
+ }
+ 
+ void sys_sleep(uint32_t time)
+ {
+-    /* TODO: [p2-task3] call invoke_syscall to implement sys_sleep */
++	/* TODO: [p2-task3] call invoke_syscall to implement sys_sleep */
+ }
+ 
+ /************************************************************/
+-- 
+2.25.1
+
