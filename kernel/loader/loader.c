@@ -16,3 +16,15 @@ uint64_t load_task_img(int taskid)
 	bios_sd_read((TASK_MEM_BASE + taskid * TASK_SIZE),tasks[taskid].block_num,tasks[taskid].block_id);
 	return (TASK_MEM_BASE + taskid * TASK_SIZE);
 }
+
+uint64_t load_task_img_by_name(char * str)
+{
+	for(int i = 0; i < TASK_MAXNUM; i++)
+	{
+		if(strcmp(tasks[i].filename,str)==0)
+		{
+			bios_sd_read((TASK_MEM_BASE + i * TASK_SIZE),tasks[i].block_num,tasks[i].block_id);
+			return (TASK_MEM_BASE + i * TASK_SIZE);
+		}
+	}
+}

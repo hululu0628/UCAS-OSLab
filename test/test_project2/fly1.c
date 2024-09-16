@@ -23,7 +23,7 @@ int main(void)
     {
         int clk = sys_get_tick();
         remain_length = 10;
-        sys_set_sche_workload(remain_length);
+        // sys_set_sche_workload(remain_length);
 
         for (int i = 50 * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
         {
@@ -41,7 +41,7 @@ int main(void)
                 // sys_yield();
                 // for (int j=0;j<200000;j++); // wait
                 if (remain_length) remain_length--;
-                sys_set_sche_workload(remain_length);
+                // sys_set_sche_workload(remain_length);
             }
         }
         // sys_yield();

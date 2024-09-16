@@ -31,14 +31,54 @@
             "-Wall",
             "-mcmodel=medany",
             "-ggdb3",
-            "-I./arch/riscv/include",
-            "-Iinclude",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
             "-o",
-            "build/main",
-            "libs/string.c"
+            "build/print1",
+            "test/test_project2/print1.c"
         ],
         "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "libs/string.c"
+        "file": "test/test_project2/print1.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/fly2",
+            "test/test_project2/fly2.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/fly2.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/timer",
+            "test/test_project2/timer.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/timer.c"
     },
     {
         "arguments": [
@@ -53,12 +93,13 @@
             "-ggdb3",
             "-I./arch/riscv/include",
             "-Iinclude",
+            "-Idrivers",
             "-o",
             "build/main",
-            "arch/riscv/bios/common.c"
+            "init/main.c"
         ],
         "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "arch/riscv/bios/common.c"
+        "file": "init/main.c"
     },
     {
         "arguments": [
@@ -73,6 +114,101 @@
             "-ggdb3",
             "-I./arch/riscv/include",
             "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "libs/printk.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "libs/printk.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "-o",
+            "build/printf.o",
+            "tiny_libc/printf.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "tiny_libc/printf.c"
+    },
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-ggdb",
+            "-Wall",
+            "-o",
+            "build/createimage",
+            "tools/createimage.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "tools/createimage.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "kernel/sched/time.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "kernel/sched/time.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/lock1",
+            "test/test_project2/lock1.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/lock1.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
             "-o",
             "build/main",
             "libs/pipe.c"
@@ -94,11 +230,11 @@
             "-I./tiny_libc/include",
             "./build/crt0.o",
             "-o",
-            "build/bss",
-            "test/test_project1/bss.c"
+            "build/fly5",
+            "test/test_project2/fly5.c"
         ],
         "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/bss.c"
+        "file": "test/test_project2/fly5.c"
     },
     {
         "arguments": [
@@ -114,71 +250,11 @@
             "-I./tiny_libc/include",
             "./build/crt0.o",
             "-o",
-            "build/auipc",
-            "test/test_project1/auipc.c"
+            "build/print2",
+            "test/test_project2/print2.c"
         ],
         "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/auipc.c"
-    },
-    {
-        "arguments": [
-            "riscv64-unknown-linux-gnu-gcc",
-            "-c",
-            "-O0",
-            "-fno-builtin",
-            "-nostdlib",
-            "-nostdinc",
-            "-Wall",
-            "-mcmodel=medany",
-            "-ggdb3",
-            "-I./tiny_libc/include",
-            "./build/crt0.o",
-            "-o",
-            "build/format",
-            "test/test_project1/format.c"
-        ],
-        "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/format.c"
-    },
-    {
-        "arguments": [
-            "riscv64-unknown-linux-gnu-gcc",
-            "-c",
-            "-O0",
-            "-fno-builtin",
-            "-nostdlib",
-            "-nostdinc",
-            "-Wall",
-            "-mcmodel=medany",
-            "-ggdb3",
-            "-I./tiny_libc/include",
-            "./build/crt0.o",
-            "-o",
-            "build/strsort",
-            "test/test_project1/strsort.c"
-        ],
-        "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/strsort.c"
-    },
-    {
-        "arguments": [
-            "riscv64-unknown-linux-gnu-gcc",
-            "-c",
-            "-O0",
-            "-fno-builtin",
-            "-nostdlib",
-            "-nostdinc",
-            "-Wall",
-            "-mcmodel=medany",
-            "-ggdb3",
-            "-I./tiny_libc/include",
-            "./build/crt0.o",
-            "-o",
-            "build/duplication",
-            "test/test_project1/duplication.c"
-        ],
-        "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/duplication.c"
+        "file": "test/test_project2/print2.c"
     },
     {
         "arguments": [
@@ -193,12 +269,117 @@
             "-ggdb3",
             "-I./arch/riscv/include",
             "-Iinclude",
+            "-Idrivers",
             "-o",
             "build/main",
-            "init/main.c"
+            "kernel/sched/list.c"
         ],
         "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "init/main.c"
+        "file": "kernel/sched/list.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/fly4",
+            "test/test_project2/fly4.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/fly4.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "kernel/sched/sched.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "kernel/sched/sched.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "arch/riscv/kernel/entry.S"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "arch/riscv/kernel/entry.S"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "kernel/loader/loader.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "kernel/loader/loader.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "kernel/mm/mm.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "kernel/mm/mm.c"
     },
     {
         "arguments": [
@@ -231,87 +412,35 @@
             "-Wall",
             "-mcmodel=medany",
             "-ggdb3",
-            "-I./tiny_libc/include",
-            "./build/crt0.o",
-            "-o",
-            "build/data",
-            "test/test_project1/data.c"
-        ],
-        "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/data.c"
-    },
-    {
-        "arguments": [
-            "gcc",
-            "-c",
-            "-ggdb",
-            "-Wall",
-            "-o",
-            "build/createimage",
-            "tools/createimage.c"
-        ],
-        "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "tools/createimage.c"
-    },
-    {
-        "arguments": [
-            "riscv64-unknown-linux-gnu-gcc",
-            "-c",
-            "-O0",
-            "-fno-builtin",
-            "-nostdlib",
-            "-nostdinc",
-            "-Wall",
-            "-mcmodel=medany",
-            "-ggdb3",
-            "-I./tiny_libc/include",
-            "./build/crt0.o",
-            "-o",
-            "build/printstr",
-            "test/test_project1/printstr.c"
-        ],
-        "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/printstr.c"
-    },
-    {
-        "arguments": [
-            "riscv64-unknown-linux-gnu-gcc",
-            "-c",
-            "-O0",
-            "-fno-builtin",
-            "-nostdlib",
-            "-nostdinc",
-            "-Wall",
-            "-mcmodel=medany",
-            "-ggdb3",
-            "-I./tiny_libc/include",
-            "./build/crt0.o",
-            "-o",
-            "build/2048",
-            "test/test_project1/2048.c"
-        ],
-        "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "test/test_project1/2048.c"
-    },
-    {
-        "arguments": [
-            "riscv64-unknown-linux-gnu-gcc",
-            "-c",
-            "-O0",
-            "-fno-builtin",
-            "-nostdlib",
-            "-nostdinc",
-            "-Wall",
-            "-mcmodel=medany",
-            "-ggdb3",
             "-I./arch/riscv/include",
             "-Iinclude",
+            "-Idrivers",
             "-o",
             "build/main",
-            "kernel/loader/loader.c"
+            "kernel/locking/lock.c"
         ],
         "directory": "/home/stu/oslab/zhuxianan22",
-        "file": "kernel/loader/loader.c"
+        "file": "kernel/locking/lock.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/lock2",
+            "test/test_project2/lock2.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/lock2.c"
     },
     {
         "arguments": [
@@ -326,11 +455,275 @@
             "-ggdb3",
             "-I./arch/riscv/include",
             "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "arch/riscv/kernel/trap.S"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "arch/riscv/kernel/trap.S"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "-o",
+            "build/syscall.o",
+            "tiny_libc/syscall.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "tiny_libc/syscall.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "-o",
+            "build/string.o",
+            "tiny_libc/string.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "tiny_libc/string.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "kernel/irq/irq.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "kernel/irq/irq.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "arch/riscv/bios/common.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "arch/riscv/bios/common.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/fly",
+            "test/test_project2/fly.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/fly.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "-o",
+            "build/time.o",
+            "tiny_libc/time.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "tiny_libc/time.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "drivers/screen.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "drivers/screen.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/fly3",
+            "test/test_project2/fly3.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/fly3.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "kernel/syscall/syscall.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "kernel/syscall/syscall.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
             "-o",
             "build/main",
             "arch/riscv/kernel/head.S"
         ],
         "directory": "/home/stu/oslab/zhuxianan22",
         "file": "arch/riscv/kernel/head.S"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/sleep",
+            "test/test_project2/sleep.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/sleep.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./tiny_libc/include",
+            "./build/crt0.o",
+            "-o",
+            "build/fly1",
+            "test/test_project2/fly1.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "test/test_project2/fly1.c"
+    },
+    {
+        "arguments": [
+            "riscv64-unknown-linux-gnu-gcc",
+            "-c",
+            "-O0",
+            "-fno-builtin",
+            "-nostdlib",
+            "-nostdinc",
+            "-Wall",
+            "-mcmodel=medany",
+            "-ggdb3",
+            "-I./arch/riscv/include",
+            "-Iinclude",
+            "-Idrivers",
+            "-o",
+            "build/main",
+            "libs/string.c"
+        ],
+        "directory": "/home/stu/oslab/zhuxianan22",
+        "file": "libs/string.c"
     }
 ]

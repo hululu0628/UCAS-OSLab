@@ -10,9 +10,9 @@
 pcb_t pcb[NUM_MAX_TASK];
 const ptr_t pid0_stack = INIT_KERNEL_STACK + PAGE_SIZE;
 pcb_t pid0_pcb = {
-    .pid = 0,
-    .kernel_sp = (ptr_t)pid0_stack,
-    .user_sp = (ptr_t)pid0_stack
+	.pid = 0,
+	.kernel_sp = (ptr_t)pid0_stack,
+	.user_sp = (ptr_t)pid0_stack
 };
 
 LIST_HEAD(ready_queue);
@@ -23,17 +23,28 @@ pid_t process_id = 1;
 
 void do_scheduler(void)
 {
-    // TODO: [p2-task3] Check sleep queue to wake up PCBs
+	// TODO: [p2-task3] Check sleep queue to wake up PCBs
 
-    /************************************************************/
-    /* Do not touch this comment. Reserved for future projects. */
-    /************************************************************/
+	/************************************************************/
+	/* Do not touch this comment. Reserved for future projects. */
+	/************************************************************/
 
-    // TODO: [p2-task1] Modify the current_running pointer.
+	// TODO: [p2-task1] Modify the current_running pointer.
+	pcb_t * prev_process = current_running;
+	if(current_running->status == TASK_RUNNING)
+	{
+		current_running->status = TASK_READY;
 
+		if(current_running != &pid0_pcb)
+			addToReadyQueue(&current_running->list);
 
-    // TODO: [p2-task1] switch_to current_running
+		current_running = (pcb_t *)getProcess();
+		current_running->status = TASK_RUNNING;
+		deleteReadyHead();
+	}
 
+	// TODO: [p2-task1] switch_to current_running
+	switch_to(prev_process,current_running);
 }
 
 void do_sleep(uint32_t sleep_time)

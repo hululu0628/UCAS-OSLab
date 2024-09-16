@@ -37,53 +37,56 @@
 /* used to save register infomation */
 typedef struct regs_context
 {
-    /* Saved main processor registers.*/
-    reg_t regs[32];
+	/* Saved main processor registers.*/
+	reg_t regs[32];
 
-    /* Saved special registers. */
-    reg_t sstatus;
-    reg_t sepc;
-    reg_t sbadaddr;
-    reg_t scause;
+	/* Saved special registers. */
+	reg_t sstatus;
+	reg_t sepc;
+	reg_t sbadaddr;
+	reg_t scause;
 } regs_context_t;
 
 /* used to save register infomation in switch_to */
 typedef struct switchto_context
 {
-    /* Callee saved registers.*/
-    reg_t regs[14];
+	/* Callee saved registers.*/
+	// 0~13: ra, t0~t6, a0~a7
+	reg_t regs[14];
 } switchto_context_t;
 
 typedef enum {
-    TASK_BLOCKED,
-    TASK_RUNNING,
-    TASK_READY,
-    TASK_EXITED,
+	TASK_BLOCKED,
+	TASK_RUNNING,
+	TASK_READY,
+	TASK_EXITED,
 } task_status_t;
 
 /* Process Control Block */
 typedef struct pcb
 {
-    /* register context */
-    // NOTE: this order must be preserved, which is defined in regs.h!!
-    reg_t kernel_sp;
-    reg_t user_sp;
+	/* register context */
+	// NOTE: this order must be preserved, which is defined in regs.h!!
+	reg_t kernel_sp;
+	reg_t user_sp;
 
-    /* previous, next pointer */
-    list_node_t list;
+	/* previous, next pointer */
+	list_node_t list;
 
-    /* process id */
-    pid_t pid;
+	struct pcb * pcb_ptr;
 
-    /* BLOCK | READY | RUNNING */
-    task_status_t status;
+	/* process id */
+	pid_t pid;
 
-    /* cursor position */
-    int cursor_x;
-    int cursor_y;
+	/* BLOCK | READY | RUNNING */
+	task_status_t status;
 
-    /* time(seconds) to wake up sleeping PCB */
-    uint64_t wakeup_time;
+	/* cursor position */
+	int cursor_x;
+	int cursor_y;
+
+	/* time(seconds) to wake up sleeping PCB */
+	uint64_t wakeup_time;
 
 } pcb_t;
 
@@ -97,7 +100,7 @@ extern list_head sleep_queue;
 register pcb_t * current_running asm("tp");
 extern pid_t process_id;
 
-extern pcb_t pcb[NUM_MAX_TASK];
+extern pcb_t pcb[NUM_MAX_TASK]; 	// pid from 1 to 16
 extern pcb_t pid0_pcb;
 extern const ptr_t pid0_stack;
 

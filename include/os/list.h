@@ -43,13 +43,22 @@
 typedef struct list_node
 {
     struct list_node *next, *prev;
+    ptr_t pcb_ptr;		// find the pcb quickly
 } list_node_t;
 
 typedef list_node_t list_head;
 
 // LIST_HEAD is used to define the head of a list.
-#define LIST_HEAD(name) struct list_node name = {&(name), &(name)}
+#define LIST_HEAD(name) struct list_node name = {&(name), &(name), (ptr_t)NULL}
 
 /* TODO: [p2-task1] implement your own list API */
+
+void addToReadyQueue(list_node_t * listnode);
+
+void deleteReadyHead();
+
+void allocReadyProcess();
+
+ptr_t getProcess();
 
 #endif
