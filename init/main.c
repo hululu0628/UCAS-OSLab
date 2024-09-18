@@ -141,14 +141,14 @@ static void init_pcb(void)
 	ptr_t entrypoint;
 	ptr_t kernel_stack,usr_stack;
 
-	entrypoint = load_task_img_by_name("print1");
+	entrypoint = load_task_img_by_name("lock1");
 	kernel_stack = allocKernelPage(1);
 	usr_stack = kernel_stack;
 	//usr_stack = allocUserPage(1);
 	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[0]);
 	pcb[0].status = TASK_READY;
 
-	entrypoint = load_task_img_by_name("print2");
+	entrypoint = load_task_img_by_name("lock2");
 	kernel_stack = allocKernelPage(1);
 	usr_stack = kernel_stack;
 	//usr_stack = allocUserPage(1);

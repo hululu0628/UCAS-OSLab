@@ -1,3 +1,4 @@
+#include "type.h"
 #include <os/list.h>
 #include <os/sched.h>
 void addToQueue(list_node_t * listnode, list_head * queue)
@@ -8,16 +9,13 @@ void addToQueue(list_node_t * listnode, list_head * queue)
 	queue->prev = listnode;
 }
 
-void deleteHead(list_head * queue)
+void deleteHead(list_node_t * listnode)
 {
 	// need comments //
-	if(queue->next != queue)
-	{
-		queue->next = queue->next->next;
-		queue->next->prev->next = NULL;
-		queue->next->prev->prev = NULL;
-		queue->next->prev = queue;
-	}
+	listnode->prev->next = listnode->next;
+	listnode->next->prev = listnode->prev;
+	listnode->next = NULL;
+	listnode->prev = NULL;
 }
 
 void allocReadyProcess()

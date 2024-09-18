@@ -70,7 +70,7 @@ typedef struct pcb
 	reg_t kernel_sp;
 	reg_t user_sp;
 
-	/* previous, next pointer */
+	/* previous, next pointer, pcb pointer */
 	list_node_t list;
 
 	struct pcb * pcb_ptr;

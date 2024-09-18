@@ -40,7 +40,8 @@ void do_scheduler(void)
 
 		current_running = (pcb_t *)getProcess();
 		current_running->status = TASK_RUNNING;
-		deleteHead(&ready_queue);
+		if(current_running->pid != 0)
+			deleteHead(ready_queue.next);
 	}
 
 	// TODO: [p2-task1] switch_to current_running
@@ -58,10 +59,25 @@ void do_sleep(uint32_t sleep_time)
 
 void do_block(list_node_t *pcb_node, list_head *queue)
 {
-    // TODO: [p2-task2] block the pcb task into the block queue
+	// TODO: [p2-task2] block the pcb task into the block queue
+	pcb_t * prev_process = current_running;
+	current_running->status = TASK_BLOCKED;
+	if(current_running != &pid0_pcb)
+		addToQueue(pcb_node, queue);
+
+	current_running = (pcb_t *)getProcess();
+	current_running->status = TASK_RUNNING;
+	if(current_running->pid != 0)
+		deleteHead(ready_queue.next);
+
+	switch_to(prev_process,current_running);
 }
 
 void do_unblock(list_node_t *pcb_node)
 {
-    // TODO: [p2-task2] unblock the `pcb` from the block queue
+	// TODO: [p2-task2] unblock the `pcb` from the block queue
+	pcb_t * pcb_unblock = (pcb_t *)pcb_node->pcb_ptr;
+	deleteHead(pcb_node);
+	pcb_unblock->status = TASK_READY;
+	addToQueue(pcb_node, &ready_queue);
 }
