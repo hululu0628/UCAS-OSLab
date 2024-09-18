@@ -102,8 +102,11 @@ static void init_pcb_stack(
 	switchto_context_t *pt_switchto =
 		(switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
 
+	pcb->kernel_sp = (reg_t)pt_switchto;
+	pcb->user_sp = (reg_t)pt_switchto;
+
 	pt_switchto->regs[0] = entry_point;
-	pt_switchto->regs[1] = 0;
+	pt_switchto->regs[1] = pcb->user_sp;
 	pt_switchto->regs[2] = 0;
 	pt_switchto->regs[3] = 0;
 	pt_switchto->regs[4] = 0;
@@ -117,8 +120,7 @@ static void init_pcb_stack(
 	pt_switchto->regs[12] = 0;
 	pt_switchto->regs[13] = 0;
 
-	pcb->kernel_sp = (reg_t)pt_switchto;
-	pcb->user_sp = (reg_t)pt_switchto;
+
 }
 
 static void init_pcb(void)
@@ -142,18 +144,21 @@ static void init_pcb(void)
 	entrypoint = load_task_img_by_name("print1");
 	kernel_stack = allocKernelPage(1);
 	usr_stack = kernel_stack;
+	//usr_stack = allocUserPage(1);
 	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[0]);
 	pcb[0].status = TASK_READY;
 
 	entrypoint = load_task_img_by_name("print2");
 	kernel_stack = allocKernelPage(1);
 	usr_stack = kernel_stack;
+	//usr_stack = allocUserPage(1);
 	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[1]);
 	pcb[1].status = TASK_READY;
 
 	entrypoint = load_task_img_by_name("fly");
 	kernel_stack = allocKernelPage(1);
 	usr_stack = kernel_stack;
+	//usr_stack = allocUserPage(1);
 	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[2]);
 	pcb[2].status = TASK_READY;
 

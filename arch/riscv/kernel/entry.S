@@ -51,50 +51,48 @@ ENDPROC(disable_interrupt)
 	// NOTE: the address of next pcb in a1
 	// process switch from a0 to a1
 ENTRY(switch_to)
+
 	addi sp, sp, -(SWITCH_TO_SIZE)
 
 	/* TODO: [p2-task1] save all callee save registers on kernel stack,
 	* see the definition of `struct switchto_context` in sched.h*/
-	sd 	ra,0(sp)
-	sd 	t0,8(sp)
-	sd 	t1,16(sp)
-	sd 	t2,24(sp)
-	sd 	t3,32(sp)
-	sd 	t4,40(sp)
-	sd	t5,48(sp)
-	sd 	t6,56(sp)
-	sd 	a0,64(sp)
-	sd 	a1,72(sp)
-	sd 	a2,80(sp)
-	sd 	a3,88(sp)
-	sd 	a4,96(sp)
-	sd	a5,104(sp)
-	sd 	a6,112(sp)
-	sd 	a7,120(sp)
+	sd 	ra,SWITCH_TO_RA(sp)
+	sd 	sp,SWITCH_TO_SP(sp)
+	sd 	s0,SWITCH_TO_S0(sp)
+	sd 	s1,SWITCH_TO_S1(sp)
+	sd 	s2,SWITCH_TO_S2(sp)
+	sd 	s3,SWITCH_TO_S3(sp)
+	sd	s4,SWITCH_TO_S4(sp)
+	sd 	s5,SWITCH_TO_S5(sp)
+	sd 	s6,SWITCH_TO_S6(sp)
+	sd 	s7,SWITCH_TO_S7(sp)
+	sd 	s8,SWITCH_TO_S8(sp)
+	sd 	s9,SWITCH_TO_S9(sp)
+	sd 	s10,SWITCH_TO_S10(sp)
+	sd	s11,SWITCH_TO_S11(sp)
 
 	sd 	sp,0(a0)	# update kernel sp in prev pcb
 	ld 	sp,0(a1)	# switch to next pcb's kernel sp
 
 	/* TODO: [p2-task1] restore all callee save registers from kernel stack,
 	* see the definition of `struct switchto_context` in sched.h*/
-	ld 	a7,120(sp)
-	ld 	a6,112(sp)
-	ld 	a5,104(sp)
-	ld 	a4,96(sp)
-	ld 	a3,88(sp)
-	ld 	a2,80(sp)
-	ld 	a1,72(sp)
-	ld 	a0,64(sp)
-	ld 	t6,56(sp)
-	ld 	t5,48(sp)
-	ld	t4,40(sp)
-	ld 	t3,32(sp)
-	ld 	t2,24(sp)
-	ld 	t1,16(sp)
-	ld 	t0,8(sp)
-	ld 	ra,0(sp)
+	ld	s11,SWITCH_TO_S11(sp)
+	ld 	s10,SWITCH_TO_S10(sp)
+	ld 	s9,SWITCH_TO_S9(sp)
+	ld 	s8,SWITCH_TO_S8(sp)
+	ld 	s7,SWITCH_TO_S7(sp)
+	ld 	s6,SWITCH_TO_S6(sp)
+	ld 	s5,SWITCH_TO_S5(sp)
+	ld	s4,SWITCH_TO_S4(sp)
+	ld 	s3,SWITCH_TO_S3(sp)
+	ld 	s2,SWITCH_TO_S2(sp)
+	ld 	s1,SWITCH_TO_S1(sp)
+	ld 	s0,SWITCH_TO_S0(sp)
+	ld 	sp,SWITCH_TO_SP(sp)
+	ld 	ra,SWITCH_TO_RA(sp)
 
 	addi sp, sp, SWITCH_TO_SIZE
+
 	jr ra
 ENDPROC(switch_to)
 

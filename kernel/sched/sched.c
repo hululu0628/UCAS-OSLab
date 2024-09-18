@@ -36,11 +36,11 @@ void do_scheduler(void)
 		current_running->status = TASK_READY;
 
 		if(current_running != &pid0_pcb)
-			addToReadyQueue(&current_running->list);
+			addToQueue(&current_running->list,&ready_queue);
 
 		current_running = (pcb_t *)getProcess();
 		current_running->status = TASK_RUNNING;
-		deleteReadyHead();
+		deleteHead(&ready_queue);
 	}
 
 	// TODO: [p2-task1] switch_to current_running

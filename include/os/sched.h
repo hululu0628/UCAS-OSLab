@@ -51,7 +51,7 @@ typedef struct regs_context
 typedef struct switchto_context
 {
 	/* Callee saved registers.*/
-	// 0~13: ra, t0~t6, a0~a7
+	// 0~13: ra, sp, s0~s11
 	reg_t regs[14];
 } switchto_context_t;
 

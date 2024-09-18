@@ -1,22 +1,22 @@
 #include <os/list.h>
 #include <os/sched.h>
-void addToReadyQueue(list_node_t * listnode)
+void addToQueue(list_node_t * listnode, list_head * queue)
 {
-	(ready_queue.prev)->next = listnode;
-	listnode->prev = ready_queue.prev;
-	listnode->next = &ready_queue;
-	ready_queue.prev = listnode;
+	(queue->prev)->next = listnode;
+	listnode->prev = queue->prev;
+	listnode->next = queue;
+	queue->prev = listnode;
 }
 
-void deleteReadyHead()
+void deleteHead(list_head * queue)
 {
 	// need comments //
-	if(ready_queue.next != &ready_queue)
+	if(queue->next != queue)
 	{
-		ready_queue.next = ready_queue.next->next;
-		ready_queue.next->prev->next = NULL;
-		ready_queue.next->prev->prev = NULL;
-		ready_queue.next->prev = &ready_queue;
+		queue->next = queue->next->next;
+		queue->next->prev->next = NULL;
+		queue->next->prev->prev = NULL;
+		queue->next->prev = queue;
 	}
 }
 
@@ -26,7 +26,7 @@ void allocReadyProcess()
 	for(i=0; i < NUM_MAX_TASK; i++)
 	{
 		if(pcb[i].status == TASK_READY)
-			addToReadyQueue(&pcb[i].list);
+			addToQueue(&pcb[i].list,&ready_queue);
 	}
 }
 

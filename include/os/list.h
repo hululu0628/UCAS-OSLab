@@ -53,9 +53,9 @@ typedef list_node_t list_head;
 
 /* TODO: [p2-task1] implement your own list API */
 
-void addToReadyQueue(list_node_t * listnode);
+void addToQueue(list_node_t * listnode, list_head * queue);
 
-void deleteReadyHead();
+void deleteHead(list_head * queue);
 
 void allocReadyProcess();
 
