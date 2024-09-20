@@ -30,6 +30,9 @@
 #include <type.h>
 #include <os/sched.h>
 
+
+#define INTERRUPT 0x8000000000000000
+
 /* ERROR code */
 enum IrqCode
 {

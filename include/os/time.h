@@ -32,6 +32,8 @@
 
 #define TIMER_INTERVAL 150000
 
+// #define TIME_BASE = 10000000
+
 extern uint64_t time_base;
 extern uint64_t time_elapsed;
 

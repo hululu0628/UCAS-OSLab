@@ -60,6 +60,10 @@
 	csrr 	t1,sepc
 	csrr	t2,stval
 	csrr 	t3,scause
+
+	blt 	t3,zero,INTER			# scause >= 0, handling exception, sepc = nextpc
+	addi 	t1,t1,4
+INTER:
 	sd 	t0,OFFSET_REG_SSTATUS(sp)
 	sd 	t1,OFFSET_REG_SEPC(sp)
 	sd 	t2,OFFSET_REG_STVAL(sp)
@@ -153,14 +157,7 @@ ENDPROC(disable_interrupt)
 	// NOTE: the address of next pcb in a1
 	// process switch from a0 to a1
 ENTRY(switch_to)
-
-
-	li 	t0,0x50501000		# (╯▔皿▔)╯
-	#blt 	sp,t0,PID0
-	#la 	ra,ret_from_exception
-
-PID0:
-
+	// (╯▔皿▔)╯
 	addi 	sp, sp, -(SWITCH_TO_SIZE)
 
 	/* TODO: [p2-task1] save all callee save registers on kernel stack,
@@ -209,12 +206,6 @@ ENTRY(ret_from_exception)
 	/* TODO: [p2-task3] restore context via provided macro and return to sepc */
 	/* HINT: remember to check your sp, does it point to the right address? */
 	RESTORE_CONTEXT
-	
-	csrw 	sscratch,t0
-	csrr 	t0,sepc
-	addi 	t0,t0,4
-	csrw 	sepc,t0
-	csrr 	t0,sscratch
 
 	sret
 
