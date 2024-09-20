@@ -12,8 +12,9 @@ handler_t exc_table[EXCC_COUNT];
 
 void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
-    // TODO: [p2-task3] & [p2-task4] interrupt handler.
-    // call corresponding handler by the value of `scause`
+	// TODO: [p2-task3] & [p2-task4] interrupt handler.
+	// call corresponding handler by the value of `scause`
+	(exc_table[scause])(regs,stval,scause);
 }
 
 void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
@@ -24,13 +25,21 @@ void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
 
 void init_exception()
 {
-    /* TODO: [p2-task3] initialize exc_table */
-    /* NOTE: handle_syscall, handle_other, etc.*/
+	/* TODO: [p2-task3] initialize exc_table */
+	/* NOTE: handle_syscall, handle_other, etc.*/
+	exc_table[EXCC_SYSCALL] = (handler_t)handle_syscall;
+	// 其他情况暂时不需要考虑
+	for(int i = 0; i < EXCC_COUNT; i++)
+	{
+		if(i != EXCC_SYSCALL)
+			exc_table[i] = (handler_t)handle_other;
+	}
 
-    /* TODO: [p2-task4] initialize irq_table */
-    /* NOTE: handle_int, handle_other, etc.*/
+	/* TODO: [p2-task4] initialize irq_table */
+	/* NOTE: handle_int, handle_other, etc.*/
 
-    /* TODO: [p2-task3] set up the entrypoint of exceptions */
+	/* TODO: [p2-task3] set up the entrypoint of exceptions */
+	setup_exception();
 }
 
 void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause)
@@ -50,8 +59,8 @@ void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause)
         }
         printk("\n\r");
     }
-    printk("sstatus: 0x%lx sbadaddr: 0x%lx scause: %lu\n\r",
-           regs->sstatus, regs->sbadaddr, regs->scause);
+    printk("sstatus: 0x%lx stval: 0x%lx scause: %lu\n\r",
+           regs->sstatus, regs->stval, regs->scause);		// replace sbadaddr with stval
     printk("sepc: 0x%lx\n\r", regs->sepc);
     printk("tval: 0x%lx cause: 0x%lx\n", stval, scause);
     assert(0);

@@ -9,7 +9,7 @@ void addToQueue(list_node_t * listnode, list_head * queue)
 	queue->prev = listnode;
 }
 
-void deleteHead(list_node_t * listnode)
+void deleteNode(list_node_t * listnode)
 {
 	// need comments //
 	listnode->prev->next = listnode->next;
@@ -31,7 +31,7 @@ void allocReadyProcess()
 ptr_t getProcess()
 {
 	if(ready_queue.next != &ready_queue)
-		return ready_queue.next->pcb_ptr;
+		return (ptr_t)FIND_PCB(ready_queue.next);
 	else
 		return (ptr_t)(&pid0_pcb);
 }

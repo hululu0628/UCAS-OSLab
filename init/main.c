@@ -1,6 +1,7 @@
 #include <common.h>
 #include <asm.h>
 #include <asm/unistd.h>
+#include <asm/regs.h>
 #include <os/loader.h>
 #include <os/irq.h>
 #include <os/sched.h>
@@ -91,22 +92,25 @@ static void init_pcb_stack(
 	* NOTE: To run the task in user mode, you should set corresponding bits
 	*     of sstatus(SPP, SPIE, etc.).
 	*/
-	regs_context_t *pt_regs =
-		(regs_context_t *)(kernel_stack - sizeof(regs_context_t));
+	regs_context_t *pt_regs = (regs_context_t *)(kernel_stack - sizeof(regs_context_t));
+	
+	pt_regs->sstatus = SR_SPIE;
+	pt_regs->sepc = entry_point;
+	pt_regs->regs[SP] = user_stack;
+	pt_regs->regs[TP] = pcb;
 
 
 	/* TODO: [p2-task1] set sp to simulate just returning from switch_to
 	* NOTE: you should prepare a stack, and push some values to
 	* simulate a callee-saved context.
 	*/
-	switchto_context_t *pt_switchto =
-		(switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
+	switchto_context_t *pt_switchto = (switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
 
 	pcb->kernel_sp = (reg_t)pt_switchto;
-	pcb->user_sp = (reg_t)pt_switchto;
+	pcb->user_sp = (reg_t)user_stack;
 
-	pt_switchto->regs[0] = entry_point;
-	pt_switchto->regs[1] = pcb->user_sp;
+	pt_switchto->regs[0] = (reg_t)ret_from_exception;
+	pt_switchto->regs[1] = pcb->kernel_sp;
 	pt_switchto->regs[2] = 0;
 	pt_switchto->regs[3] = 0;
 	pt_switchto->regs[4] = 0;
@@ -123,6 +127,19 @@ static void init_pcb_stack(
 
 }
 
+static inline void add_new_task(char * str,int pid)
+{
+	ptr_t entrypoint;
+	ptr_t kernel_stack,usr_stack;
+
+	entrypoint = load_task_img_by_name(str);
+	kernel_stack = allocKernelPage(1);
+	usr_stack = allocUserPage(1);
+	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
+	pcb[pid-1].status = TASK_READY;
+}
+
+
 static void init_pcb(void)
 {
 	/* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
@@ -138,29 +155,21 @@ static void init_pcb(void)
 
 	pid0_pcb.status = TASK_RUNNING;
 
-	ptr_t entrypoint;
-	ptr_t kernel_stack,usr_stack;
 
-	entrypoint = load_task_img_by_name("lock1");
-	kernel_stack = allocKernelPage(1);
-	usr_stack = kernel_stack;
-	//usr_stack = allocUserPage(1);
-	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[0]);
-	pcb[0].status = TASK_READY;
+	add_new_task("print1",1);
 
-	entrypoint = load_task_img_by_name("lock2");
-	kernel_stack = allocKernelPage(1);
-	usr_stack = kernel_stack;
-	//usr_stack = allocUserPage(1);
-	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[1]);
-	pcb[1].status = TASK_READY;
+	add_new_task("print2",2);
 
-	entrypoint = load_task_img_by_name("fly");
-	kernel_stack = allocKernelPage(1);
-	usr_stack = kernel_stack;
-	//usr_stack = allocUserPage(1);
-	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[2]);
-	pcb[2].status = TASK_READY;
+	add_new_task("lock1",3);
+
+	add_new_task("lock2",4);
+
+	add_new_task("sleep",5);
+
+	add_new_task("timer",6);
+
+	add_new_task("fly",7);
+
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
 
@@ -174,6 +183,16 @@ static void init_pcb(void)
 static void init_syscall(void)
 {
 	// TODO: [p2-task3] initialize system call table.
+	syscall[SYSCALL_SLEEP] 		= (long (*)())do_sleep;
+	syscall[SYSCALL_YIELD] 		= (long (*)())do_scheduler;
+	syscall[SYSCALL_WRITE] 		= (long (*)())screen_write;
+	syscall[SYSCALL_CURSOR] 	= (long (*)())screen_move_cursor;
+	syscall[SYSCALL_REFLUSH] 	= (long (*)())screen_reflush;
+	syscall[SYSCALL_GET_TIMEBASE] 	= (long (*)())get_time_base;
+	syscall[SYSCALL_GET_TICK] 	= (long (*)())get_ticks;
+	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
+	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
+	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
 }
 /************************************************************/
 
@@ -218,8 +237,7 @@ int main(void)
     
 
 
-	// TODO: Load tasks by either task id [p1-task3] or task name [p1-task4],
-	//   and then execute them.
+
 
 
 

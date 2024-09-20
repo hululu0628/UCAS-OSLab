@@ -55,7 +55,7 @@ typedef list_node_t list_head;
 
 void addToQueue(list_node_t * listnode, list_head * queue);
 
-void deleteHead(list_head * queue);
+void deleteNode(list_node_t * listnode);
 
 void allocReadyProcess();
 

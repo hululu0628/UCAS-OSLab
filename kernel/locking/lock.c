@@ -48,7 +48,8 @@ int do_mutex_lock_init(int key)
 void do_mutex_lock_acquire(int mlock_idx)
 {
 	/* TODO: [p2-task2] acquire mutex lock */
-	// need atomic operation
+	/* FIXME: This is non-reentrant mutex.
+	   Multiple requests for a lock from the same process can lead to deadlocks */
 	while(atomic_cmpxchg(UNLOCKED, LOCKED, (ptr_t)(&mlocks[mlock_idx].lock.status)) == LOCKED)
 		do_block(&current_running->list, &mlocks[mlock_idx].block_queue);
 }

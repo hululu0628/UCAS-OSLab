@@ -34,6 +34,8 @@
 
 #define NUM_MAX_TASK 16
 
+#define FIND_PCB(name) ((pcb_t *)(name->pcb_ptr))
+
 /* used to save register infomation */
 typedef struct regs_context
 {
@@ -43,7 +45,9 @@ typedef struct regs_context
 	/* Saved special registers. */
 	reg_t sstatus;
 	reg_t sepc;
-	reg_t sbadaddr;
+	// reg_t sbadaddr;
+	/* The latest version of the RISC-V specification replaces sbadaddr with stval */
+	reg_t stval;
 	reg_t scause;
 } regs_context_t;
 
