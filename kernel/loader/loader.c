@@ -27,4 +27,5 @@ uint64_t load_task_img_by_name(char * str)
 			return (TASK_MEM_BASE + i * TASK_SIZE);
 		}
 	}
+	return 0;
 }

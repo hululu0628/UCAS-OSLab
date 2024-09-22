@@ -127,16 +127,21 @@ static void init_pcb_stack(
 
 }
 
-static inline void add_new_task(char * str,int pid)
+static inline int add_new_task(char * str,int pid)
 {
 	ptr_t entrypoint;
 	ptr_t kernel_stack,usr_stack;
 
-	entrypoint = load_task_img_by_name(str);
-	kernel_stack = allocKernelPage(1);
-	usr_stack = allocUserPage(1);
-	init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
-	pcb[pid-1].status = TASK_READY;
+	if((entrypoint = load_task_img_by_name(str)) != 0)
+	{
+		kernel_stack = allocKernelPage(1);
+		usr_stack = allocUserPage(1);
+		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
+		pcb[pid-1].status = TASK_READY;
+		return 0;
+	}
+	else  
+		return 1;
 }
 
 
@@ -194,6 +199,85 @@ static void init_syscall(void)
 	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
 	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
 }
+
+static inline void getTask()
+{
+	char buf[64];
+	int error;
+	int c;
+	int i = 0;
+	int pid = 1;
+	while(1)
+	{
+		if(((c=bios_getchar())==13 && i == 0) || pid > 16)
+		{
+			break;
+		}
+		else if(i < 49)
+		{
+			if(c == 13)	// press Enter
+			{
+				// refresh buff
+				buf[i] = '\0';
+				i = 0;
+
+				bios_putchar(10);	// move the cursor to the next line
+
+				if(strcmp(buf,"task1") == 0)
+				{
+					add_new_task("print1", pid++);
+					add_new_task("print2", pid++);
+					add_new_task("fly", pid++);
+				}
+				else if(strcmp(buf, "task2") == 0)
+				{
+					add_new_task("lock1", pid++);
+					add_new_task("lock2", pid++);
+					add_new_task("fly", pid++);
+				}
+				else if(strcmp(buf, "task3") == 0 || strcmp(buf, "task4") == 0)
+				{
+					add_new_task("print1", pid++);
+					add_new_task("print2", pid++);
+					add_new_task("lock1", pid++);
+					add_new_task("lock2", pid++);
+					add_new_task("sleep", pid++);
+					add_new_task("timer", pid++);
+					add_new_task("fly", pid++);
+				}
+				else
+				{
+					error = add_new_task(buf, pid);
+					if(error)
+						bios_putstr("\033[31mERROR:\033[0m no such task\n\r");
+					else  
+						pid++;
+				}
+
+			}
+			else if(c != -1)
+			{
+				if(c != 127)
+				{
+					bios_putchar(c);
+					buf[i++] = c;
+				}
+				else
+				{
+					// after pressing Backspace
+					if(i > 0)
+						buf[--i] = '\0';
+					bios_putstr("\b \b");
+				}
+			}
+		}
+		else
+		{
+			bios_putstr("\n\r\033[33mWARNING:\033[0m the name is too long\n\r");
+			i = 0;
+		}
+	}
+}
 /************************************************************/
 
 int main(void)
@@ -232,9 +316,26 @@ int main(void)
 	init_screen();
 	printk("> [INIT] SCREEN initialization succeeded.\n");
 
+
+	/*
+	do_sleep(2);
+
+	screen_clear();
+
+	getTask();
+
+	allocReadyProcess();
+
+	do_sleep(2);
+
+	screen_clear();
+	*/
+
+
 	// TODO: [p2-task4] Setup timer interrupt and 
 	// enable all interrupt globally(or enable in trap.s)
 	// NOTE: The function of sstatus.sie is different from sie's
+
 
 	bios_set_timer(get_ticks() + TIMER_INTERVAL);
 
