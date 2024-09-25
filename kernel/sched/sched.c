@@ -1,3 +1,4 @@
+#include "os/kernel.h"
 #include <os/list.h>
 #include <os/lock.h>
 #include <os/sched.h>
@@ -12,7 +13,8 @@ const ptr_t pid0_stack = INIT_KERNEL_STACK + PAGE_SIZE;
 pcb_t pid0_pcb = {
 	.pid = 0,
 	.kernel_sp = (ptr_t)pid0_stack,
-	.user_sp = (ptr_t)pid0_stack
+	.user_sp = (ptr_t)pid0_stack,
+	.time_chunk = TIMER_INTERVAL
 };
 
 LIST_HEAD(ready_queue);
@@ -41,11 +43,17 @@ void do_scheduler(void)
 			addToQueue(&current_running->list,&ready_queue);
 	}
 
+	current_running->total_running += current_running->time_chunk; 	// for p2-task5
+	
+
 	current_running = (pcb_t *)getProcess();
 	current_running->status = TASK_RUNNING;
 	if(current_running->pid != 0)
 		deleteNode(ready_queue.next);
 
+	bios_set_timer(get_ticks() + current_running->time_chunk);	// set timer interrupt
+
+	current_running->start_tick = get_ticks();			// for p2-task5
 
 	// TODO: [p2-task1] switch_to current_running
 	switch_to(prev_process,current_running);

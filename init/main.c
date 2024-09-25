@@ -12,12 +12,13 @@
 #include <os/string.h>
 #include <os/mm.h>
 #include <os/time.h>
+#include <os/workload.h>	// for p2-task5
 #include <sys/syscall.h>
 #include <screen.h>
 #include <printk.h>
 #include <assert.h>
-#include <os/pipe.h>		//约定了存放字符串的位置和大小，以及指向存放队列的两个指针
-#include <os/batch.h>		//batch_sh函数声明，以及task_queue的定义
+#include <os/pipe.h>		// for p1-task5, 约定了存放字符串的位置和大小，以及指向存放队列的两个指针
+#include <os/batch.h>		// for p1-task5, batch_sh函数声明，以及task_queue的定义
 #include <type.h>
 #include <csr.h>
 
@@ -138,6 +139,7 @@ static inline int add_new_task(char * str,int pid)
 		usr_stack = allocUserPage(1);
 		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
 		pcb[pid-1].status = TASK_READY;
+		pcb[pid-1].time_chunk = TIMER_INTERVAL;
 		return 0;
 	}
 	else  
@@ -156,24 +158,35 @@ static void init_pcb(void)
 		pcb[i].list.next = NULL;
 		pcb[i].list.pcb_ptr = (ptr_t)&pcb[i];
 		pcb[i].status = TASK_EXITED;
+		pcb[i].total_running = 0;
 	}
 
 	pid0_pcb.status = TASK_RUNNING;
 
 
-	add_new_task("print1",1);
+	//add_new_task("print1",1);
 
-	add_new_task("print2",2);
+	//add_new_task("print2",2);
 
-	add_new_task("lock1",3);
+	//add_new_task("lock1",3);
 
-	add_new_task("lock2",4);
+	//add_new_task("lock2",4);
 
-	add_new_task("sleep",5);
+	//add_new_task("sleep",5);
 
-	add_new_task("timer",6);
+	//add_new_task("timer",6);
 
-	add_new_task("fly",7);
+	//add_new_task("fly",7);
+
+	add_new_task("fly1", 8);
+
+	add_new_task("fly2", 9);
+
+	add_new_task("fly3", 10);
+
+	add_new_task("fly4", 11);
+
+	add_new_task("fly5", 12);
 
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
@@ -198,6 +211,7 @@ static void init_syscall(void)
 	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
 	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
 	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
+	syscall[SYSCALL_WORKLOAD]	= (long (*)())do_workload_schedule;
 }
 
 static inline void getTask()
@@ -282,7 +296,7 @@ static inline void getTask()
 
 int main(void)
 {
-
+	
 	// Init jump table provided by kernel and bios(ΦωΦ)
 	init_jmptab();
 
@@ -333,11 +347,13 @@ int main(void)
 
 
 	// TODO: [p2-task4] Setup timer interrupt and 
-	// enable all interrupt globally(or enable in trap.s)
+	// enable all interrupt globally
 	// NOTE: The function of sstatus.sie is different from sie's
 
+	//enable_interrupt();
 
-	bios_set_timer(get_ticks() + TIMER_INTERVAL);
+	bios_set_timer(get_ticks() + pid0_pcb.time_chunk);
+
 
 	// Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
 	while (1)

@@ -28,7 +28,7 @@ int main(void)
 
         sys_mutex_acquire(mutex_id);
 
-        for (int i = 0; i < 500; i++)
+        for (int i = 0; i < 100; i++)
         {
             sys_move_cursor(0, print_location);
             printf("> [TASK] Has acquired lock and running.(%d)\n", i);
