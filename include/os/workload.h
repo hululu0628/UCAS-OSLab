@@ -7,11 +7,13 @@
 
 #define LENGTH 60
 #define FLY_NUM 5
+#define SPEEDING_PENALTY 10
 
 typedef struct fly_length
 {
 	uint64_t prev_time;
 	uint64_t time_interval;
+	int flights;
 	int remain_length;
 	int pid
 } fly_len_t;

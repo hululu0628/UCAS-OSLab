@@ -164,29 +164,29 @@ static void init_pcb(void)
 	pid0_pcb.status = TASK_RUNNING;
 
 
-	//add_new_task("print1",1);
+	add_new_task("print1",1);
 
-	//add_new_task("print2",2);
+	add_new_task("print2",2);
 
-	//add_new_task("lock1",3);
+	add_new_task("lock1",3);
 
-	//add_new_task("lock2",4);
+	add_new_task("lock2",4);
 
-	//add_new_task("sleep",5);
+	add_new_task("sleep",5);
 
-	//add_new_task("timer",6);
+	add_new_task("timer",6);
 
-	//add_new_task("fly",7);
+	add_new_task("fly",7);
 
-	add_new_task("fly1", 8);
+	//add_new_task("fly1", 8);
 
-	add_new_task("fly2", 9);
+	//add_new_task("fly2", 9);
 
-	add_new_task("fly3", 10);
+	//add_new_task("fly3", 10);
 
-	add_new_task("fly4", 11);
+	//add_new_task("fly4", 11);
 
-	add_new_task("fly5", 12);
+	//add_new_task("fly5", 12);
 
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
