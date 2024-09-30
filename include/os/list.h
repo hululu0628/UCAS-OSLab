@@ -53,12 +53,16 @@ typedef list_node_t list_head;
 
 /* TODO: [p2-task1] implement your own list API */
 
+// add one node to the queue
 void addToQueue(list_node_t * listnode, list_head * queue);
 
+// delete one node from its current queue
 void deleteNode(list_node_t * listnode);
 
+// get all the ready process at the beginning
 void allocReadyProcess();
 
+// get the next process from the head of ready queue
 ptr_t getProcess();
 
 #endif

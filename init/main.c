@@ -52,7 +52,6 @@ static void init_jmptab(void)
     	jmptab[MUTEX_RELEASE]   = (long (*)())do_mutex_lock_release;
 
 	// TODO: [p2-task1] (S-core) initialize system call table.
-	// 
 	jmptab[WRITE]		= (long (*)())screen_write;
 	jmptab[FLUSH]		= (long (*)())screen_reflush;
 
@@ -95,8 +94,8 @@ static void init_pcb_stack(
 	*/
 	regs_context_t *pt_regs = (regs_context_t *)(kernel_stack - sizeof(regs_context_t));
 	
-	pt_regs->sstatus = SR_SPIE;
-	pt_regs->sepc = entry_point;
+	pt_regs->sstatus = SR_SPIE;		// return U-mode(SPP == 0) and enable interrupt gloablly(SPIE == 1)
+	pt_regs->sepc = entry_point;		// jump to entrypoint using sret
 	pt_regs->regs[SP] = user_stack;
 	pt_regs->regs[TP] = pcb;
 
@@ -110,6 +109,7 @@ static void init_pcb_stack(
 	pcb->kernel_sp = (reg_t)pt_switchto;
 	pcb->user_sp = (reg_t)user_stack;
 
+	// for user process, jump to entrypoint by using sret
 	pt_switchto->regs[0] = (reg_t)ret_from_exception;
 	pt_switchto->regs[1] = pcb->kernel_sp;
 	pt_switchto->regs[2] = 0;
@@ -135,7 +135,7 @@ static inline int add_new_task(char * str,int pid)
 
 	if((entrypoint = load_task_img_by_name(str)) != 0)
 	{
-		kernel_stack = allocKernelPage(1);
+		kernel_stack = allocKernelPage(1);		// only alloc one page
 		usr_stack = allocUserPage(1);
 		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
 		pcb[pid-1].status = TASK_READY;
@@ -151,14 +151,15 @@ static void init_pcb(void)
 {
 	/* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
 	int i;
+	// initialize pcb array
 	for(i = 0; i < NUM_MAX_TASK; i++)
 	{
 		pcb[i].pid = i + 1;
 		pcb[i].list.prev = NULL;
 		pcb[i].list.next = NULL;
 		pcb[i].list.pcb_ptr = (ptr_t)&pcb[i];
-		pcb[i].status = TASK_EXITED;
-		pcb[i].total_running = 0;
+		pcb[i].status = TASK_EXITED;			// useless
+		pcb[i].total_running = 0;			// for p2-task5
 	}
 
 	pid0_pcb.status = TASK_RUNNING;
@@ -191,8 +192,8 @@ static void init_pcb(void)
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
 
-	current_running = &pid0_pcb;
-	process_id = pid0_pcb.pid;
+	current_running = &pid0_pcb;		// current running is kernel
+	process_id = pid0_pcb.pid;		//
 
 	allocReadyProcess();
 
@@ -211,8 +212,9 @@ static void init_syscall(void)
 	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
 	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
 	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
-	syscall[SYSCALL_WORKLOAD]	= (long (*)())do_workload_schedule;
+	syscall[SYSCALL_WORKLOAD]	= (long (*)())do_workload_schedule;		// for p2-task5
 }
+
 
 static inline void getTask()
 {

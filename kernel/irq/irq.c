@@ -14,8 +14,9 @@ void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
 	// TODO: [p2-task3] & [p2-task4] interrupt handler.
 	// call corresponding handler by the value of `scause`
-	uint64_t cause = scause & ~INTERRUPT;
-	if(scause & INTERRUPT)
+
+	uint64_t cause = scause & ~INTERRUPT;		// get exception code
+	if(scause & INTERRUPT)				// Is interrupt?
 		(irq_table[cause])(regs,stval,scause);
 	else
 		(exc_table[cause])(regs,stval,scause);
@@ -25,8 +26,9 @@ void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
 	// TODO: [p2-task4] clock interrupt handler.
-	// Note: use bios_set_timer to reset the timer(in p2-task5, finish in do_scheduler)
-	// and remember to reschedule
+	// Note: use bios_set_timer to reset the timer and remember to reschedule
+	// in p2-task5, set timer in do_scheduler
+	
 	do_scheduler();
 }
 

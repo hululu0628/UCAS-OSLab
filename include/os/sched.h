@@ -34,7 +34,7 @@
 
 #define NUM_MAX_TASK 16
 
-#define FIND_PCB(name) ((pcb_t *)(name->pcb_ptr))
+#define FIND_PCB(name) ((pcb_t *)(name->pcb_ptr))	// find pcb
 
 /* used to save register infomation */
 typedef struct regs_context
@@ -92,7 +92,10 @@ typedef struct pcb
 	/* time(seconds) to wake up sleeping PCB */
 	uint64_t wakeup_time;
 
-	uint64_t time_chunk;
+
+	// for p2-task5
+	// time chunk for the process
+	uint64_t time_chunk;		
 
 	uint64_t total_running;
 

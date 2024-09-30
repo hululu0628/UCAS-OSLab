@@ -47,8 +47,9 @@ void do_scheduler(void)
 	
 
 	current_running = (pcb_t *)getProcess();
+	process_id = current_running->pid;
 	current_running->status = TASK_RUNNING;
-	if(current_running->pid != 0)
+	if(process_id != 0)
 		deleteNode(ready_queue.next);
 
 	bios_set_timer(get_ticks() + current_running->time_chunk);	// set timer interrupt
@@ -75,7 +76,7 @@ void do_sleep(uint32_t sleep_time)
 	}
 	else
 	{
-		latency(sleep_time);
+		latency(sleep_time);		// in kernel process, call latency
 	}
 
 }

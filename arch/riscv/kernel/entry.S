@@ -44,7 +44,7 @@
 	sd 	t6,OFFSET_REG_T6(sp)
 
 	csrr	t0,sscratch
-	sd 	t0,OFFSET_REG_SP(sp)
+	sd 	t0,OFFSET_REG_SP(sp)			# sp points to user-stack
 	/*
 	* Disable user-mode memory access as it should only be set in the
 	* actual user copy routines.
@@ -162,8 +162,10 @@ ENTRY(switch_to)
 
 	/* TODO: [p2-task1] save all callee save registers on kernel stack,
 	* see the definition of `struct switchto_context` in sched.h*/
-	sd 	ra,SWITCH_TO_RA(sp)
-	sd 	sp,SWITCH_TO_SP(sp)
+	sd 	ra,SWITCH_TO_RA(sp)	# for user process, ra points to do_scheduler
+					# (do_scheduler->handler->inter_helper->ret_from_exception)
+
+	sd 	sp,SWITCH_TO_SP(sp)	# sp points to kernel-stack
 	sd 	s0,SWITCH_TO_S0(sp)
 	sd 	s1,SWITCH_TO_S1(sp)
 	sd 	s2,SWITCH_TO_S2(sp)

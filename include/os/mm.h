@@ -36,6 +36,7 @@
 #define FREEMEM_USER INIT_USER_STACK
 
 /* Rounding; only works for n = power of two */
+// ensure that the first page is 0x50501000~0x50502000
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1)) + PAGE_SIZE
 #define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
 

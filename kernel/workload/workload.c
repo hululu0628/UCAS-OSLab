@@ -10,7 +10,7 @@ void do_workload_schedule(uint64_t remain)
 	int i = 0;
 	int status = 1;
 	int min = INT32_MAX;
-	int pid = current_running->pid;
+	int pid = process_id;
 	uint64_t interval = 0, s = 0;
 	uint64_t total;
 	if(length[i].pid == 0)
@@ -25,8 +25,8 @@ void do_workload_schedule(uint64_t remain)
 		}
 	}
 
-	printl("pid: %d, remain: %d,total_running: %ld,prev: %ld\n",
-		current_running->pid,remain,current_running->total_running, length[pid-8].prev_time);
+	/* printl("pid: %d, remain: %d,total_running: %ld,prev: %ld\n",
+		current_running->pid,remain,current_running->total_running, length[pid-8].prev_time); */
 
 	if(remain > length[pid-8].remain_length)
 	{
@@ -35,6 +35,7 @@ void do_workload_schedule(uint64_t remain)
 	}
 	length[pid-8].remain_length = remain;
 
+	// 每次调用，基于相关的数据计算本次和上次调用之间经过的时间
 	interval = get_ticks() - current_running->start_tick;
 	s = interval;
 	if(current_running->total_running != length[pid-8].prev_time)
@@ -44,7 +45,7 @@ void do_workload_schedule(uint64_t remain)
 	}
 	length[pid-8].time_interval = interval;
 
-
+	// 根据飞机的飞行轮次和调用间隔分配时间片
 	for(i=0;i<FLY_NUM;i++)
 	{
 		if(length[i].flights < min)
@@ -57,15 +58,16 @@ void do_workload_schedule(uint64_t remain)
 		else
 			total += (length[i].remain_length + 1) * length[i].time_interval / SPEEDING_PENALTY;
 	}
+
 	if(length[pid-8].flights == min)
 	{
 		current_running->time_chunk = ((remain + 1) * interval) * (FLY_NUM * TIMER_INTERVAL) / total;
-		if(current_running->time_chunk < s)
+		if(current_running->time_chunk < s)		// 分配的时间片小于当前的运行时间，立刻切换进程
 			do_scheduler();
 	}
 	else
 	{
 		current_running->time_chunk = (((remain + 1) * interval / SPEEDING_PENALTY) * (FLY_NUM * TIMER_INTERVAL) / total);
-		do_scheduler();
+		do_scheduler();			// 飞行轮次不等于最小值，立刻切换进程
 	}
 }

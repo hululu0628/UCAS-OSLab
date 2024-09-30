@@ -11,9 +11,10 @@ void addToQueue(list_node_t * listnode, list_head * queue)
 
 void deleteNode(list_node_t * listnode)
 {
-	// need comments //
 	listnode->prev->next = listnode->next;
 	listnode->next->prev = listnode->prev;
+	
+	// note that the pointer is NULL
 	listnode->next = NULL;
 	listnode->prev = NULL;
 }
