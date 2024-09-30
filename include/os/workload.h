@@ -12,15 +12,15 @@
 // 时间单位均为tick
 typedef struct fly_length
 {
-	uint64_t prev_time;		// 上一次调用sys_set_sche_workload时，该进程运行的时间
-	uint64_t time_interval;		// 本次和上次调用之间，该进程运行了多久
-	int flights;			// 飞机飞行轮次
+	int chunk_num;
 	int remain_length;		// 飞机距离终点的位置
-	int pid				// 对应进程的pid
+	int pid;			// 对应进程的pid
 } fly_len_t;
 
 // 结构体数组
 extern fly_len_t length[FLY_NUM];
+
+extern int status;
 
 extern void do_workload_schedule(uint64_t remain);
 

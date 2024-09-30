@@ -36,24 +36,24 @@ static void init_jmptab(void)
 {
 	volatile long (*(*jmptab))() = (volatile long (*(*))())KERNEL_JMPTAB_BASE;
 
-    	jmptab[CONSOLE_PUTSTR]  = (long (*)())port_write;
-    	jmptab[CONSOLE_PUTCHAR] = (long (*)())port_write_ch;
-    	jmptab[CONSOLE_GETCHAR] = (long (*)())port_read_ch;
-    	jmptab[SD_READ]         = (long (*)())sd_read;
-    	jmptab[SD_WRITE]        = (long (*)())sd_write;
-    	jmptab[QEMU_LOGGING]    = (long (*)())qemu_logging;
-    	jmptab[SET_TIMER]       = (long (*)())set_timer;
-    	jmptab[READ_FDT]        = (long (*)())read_fdt;
-    	jmptab[MOVE_CURSOR]     = (long (*)())screen_move_cursor;
-    	jmptab[PRINT]           = (long (*)())printk;
-    	jmptab[YIELD]           = (long (*)())do_scheduler;
-    	jmptab[MUTEX_INIT]      = (long (*)())do_mutex_lock_init;
-    	jmptab[MUTEX_ACQ]       = (long (*)())do_mutex_lock_acquire;
-    	jmptab[MUTEX_RELEASE]   = (long (*)())do_mutex_lock_release;
+    	jmptab[CONSOLE_PUTSTR]  = (volatile long (*)())port_write;
+    	jmptab[CONSOLE_PUTCHAR] = (volatile long (*)())port_write_ch;
+    	jmptab[CONSOLE_GETCHAR] = (volatile long (*)())port_read_ch;
+    	jmptab[SD_READ]         = (volatile long (*)())sd_read;
+    	jmptab[SD_WRITE]        = (volatile long (*)())sd_write;
+    	jmptab[QEMU_LOGGING]    = (volatile long (*)())qemu_logging;
+    	jmptab[SET_TIMER]       = (volatile long (*)())set_timer;
+    	jmptab[READ_FDT]        = (volatile long (*)())read_fdt;
+    	jmptab[MOVE_CURSOR]     = (volatile long (*)())screen_move_cursor;
+    	jmptab[PRINT]           = (volatile long (*)())printk;
+    	jmptab[YIELD]           = (volatile long (*)())do_scheduler;
+    	jmptab[MUTEX_INIT]      = (volatile long (*)())do_mutex_lock_init;
+    	jmptab[MUTEX_ACQ]       = (volatile long (*)())do_mutex_lock_acquire;
+    	jmptab[MUTEX_RELEASE]   = (volatile long (*)())do_mutex_lock_release;
 
 	// TODO: [p2-task1] (S-core) initialize system call table.
-	jmptab[WRITE]		= (long (*)())screen_write;
-	jmptab[FLUSH]		= (long (*)())screen_reflush;
+	jmptab[WRITE]		= (volatile long (*)())screen_write;
+	jmptab[FLUSH]		= (volatile long (*)())screen_reflush;
 
 }
 
@@ -97,7 +97,7 @@ static void init_pcb_stack(
 	pt_regs->sstatus = SR_SPIE;		// return U-mode(SPP == 0) and enable interrupt gloablly(SPIE == 1)
 	pt_regs->sepc = entry_point;		// jump to entrypoint using sret
 	pt_regs->regs[SP] = user_stack;
-	pt_regs->regs[TP] = pcb;
+	pt_regs->regs[TP] = (reg_t)pcb;
 
 
 	/* TODO: [p2-task1] set sp to simulate just returning from switch_to
@@ -165,29 +165,29 @@ static void init_pcb(void)
 	pid0_pcb.status = TASK_RUNNING;
 
 
-	add_new_task("print1",1);
+	//add_new_task("print1",1);
 
-	add_new_task("print2",2);
+	//add_new_task("print2",2);
 
-	add_new_task("lock1",3);
+	//add_new_task("lock1",3);
 
-	add_new_task("lock2",4);
+	//add_new_task("lock2",4);
 
-	add_new_task("sleep",5);
+	//add_new_task("sleep",5);
 
-	add_new_task("timer",6);
+	//add_new_task("timer",6);
 
-	add_new_task("fly",7);
+	//add_new_task("fly",7);
 
-	//add_new_task("fly1", 8);
+	add_new_task("fly1", 8);
 
-	//add_new_task("fly2", 9);
+	add_new_task("fly2", 9);
 
-	//add_new_task("fly3", 10);
+	add_new_task("fly3", 10);
 
-	//add_new_task("fly4", 11);
+	add_new_task("fly4", 11);
 
-	//add_new_task("fly5", 12);
+	add_new_task("fly5", 12);
 
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
