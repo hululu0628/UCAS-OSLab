@@ -26,6 +26,8 @@ extern int status;
 
 extern int num;
 
+extern int flight;
+
 extern void do_workload_schedule(uint64_t remain);
 
 
