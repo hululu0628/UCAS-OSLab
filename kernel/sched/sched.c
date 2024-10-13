@@ -4,6 +4,7 @@
 #include <os/sched.h>
 #include <os/time.h>
 #include <os/mm.h>
+#include <os/workload.h>	// for p2-task5
 #include <screen.h>
 #include <printk.h>
 #include <assert.h>
@@ -14,7 +15,7 @@ pcb_t pid0_pcb = {
 	.pid = 0,
 	.kernel_sp = (ptr_t)pid0_stack,
 	.user_sp = (ptr_t)pid0_stack,
-	.time_chunk = TIMER_INTERVAL
+	.chunk_num = 0
 };
 
 LIST_HEAD(ready_queue);
@@ -40,10 +41,18 @@ void do_scheduler(void)
 		current_running->status = TASK_READY;
 
 		if(current_running != &pid0_pcb)
-			addToQueue(&current_running->list,&ready_queue);
+		{
+			if(process_id > 7 && process_id < 13)
+			{
+				if(length[process_id - 8].done)
+					addToQueue(&current_running->list, &ready_queue);
+				else
+					addToQueue(&current_running->list, ready_queue.next);
+			}
+			else
+				addToQueue(&current_running->list, &ready_queue);
+		}
 	}
-
-	current_running->total_running += current_running->time_chunk; 	// for p2-task5
 	
 
 	current_running = (pcb_t *)getProcess();
@@ -52,9 +61,7 @@ void do_scheduler(void)
 	if(process_id != 0)
 		deleteNode(ready_queue.next);
 
-	bios_set_timer(get_ticks() + current_running->time_chunk);	// set timer interrupt
-
-	current_running->start_tick = get_ticks();			// for p2-task5
+	bios_set_timer(get_ticks() + TIMER_INTERVAL);	// set timer interrupt
 
 	// TODO: [p2-task1] switch_to current_running
 	switch_to(prev_process,current_running);

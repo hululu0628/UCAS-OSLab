@@ -128,6 +128,8 @@ static void init_pcb_stack(
 
 }
 
+
+
 static inline int add_new_task(char * str,int pid)
 {
 	ptr_t entrypoint;
@@ -135,11 +137,11 @@ static inline int add_new_task(char * str,int pid)
 
 	if((entrypoint = load_task_img_by_name(str)) != 0)
 	{
-		kernel_stack = allocKernelPage(1);		// only alloc one page
-		usr_stack = allocUserPage(1);
+		kernel_stack = allocKernelStack(1);		// only alloc one page
+		usr_stack = allocUserStack(1);
 		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
 		pcb[pid-1].status = TASK_READY;
-		pcb[pid-1].time_chunk = TIMER_INTERVAL;
+		pcb[pid-1].chunk_num = 0;
 		return 0;
 	}
 	else  
@@ -159,7 +161,6 @@ static void init_pcb(void)
 		pcb[i].list.next = NULL;
 		pcb[i].list.pcb_ptr = (ptr_t)&pcb[i];
 		pcb[i].status = TASK_EXITED;			// useless
-		pcb[i].total_running = 0;			// for p2-task5
 	}
 
 	pid0_pcb.status = TASK_RUNNING;
@@ -354,7 +355,7 @@ int main(void)
 
 	//enable_interrupt();
 
-	bios_set_timer(get_ticks() + pid0_pcb.time_chunk);
+	bios_set_timer(get_ticks() + TIMER_INTERVAL);
 
 
 	// Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
