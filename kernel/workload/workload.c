@@ -48,7 +48,10 @@ void do_workload_schedule(uint64_t remain)
 		}
 		for(i=0;i<FLY_NUM;i++)
 		{
-			length[i].next = length[i].remain_length - length[i].remain_length / min;
+			if(min != 1)
+				length[i].next = length[i].remain_length - length[i].remain_length / min;
+			else
+				length[i].next = 0;
 			if(length[i].remain_length != 0)
 				length[i].done = 0;
 		}
