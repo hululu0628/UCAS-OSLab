@@ -8,6 +8,7 @@
  */
 
 #define CYCLE_PER_MOVE 50
+#define LENGTH 50
 
 static char blank[] = {"                                                                               "};
 static char plane1[] = {"    \\\\   "};
@@ -22,10 +23,10 @@ int main(void)
     while (1)
     {
         int clk = sys_get_tick();
-        remain_length = 50;
+        remain_length = LENGTH;
         sys_set_sche_workload(remain_length);
 
-        for (int i = 10 * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
+        for (int i = (60 - LENGTH) * CYCLE_PER_MOVE; i < 60 * CYCLE_PER_MOVE; i++)
         {
             /* move */
             if(i % CYCLE_PER_MOVE == 0)

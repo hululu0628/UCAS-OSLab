@@ -12,15 +12,21 @@
 // 时间单位均为tick
 typedef struct fly_length
 {
-	int chunk_num;
+	int done;
 	int remain_length;		// 飞机距离终点的位置
 	int pid;			// 对应进程的pid
+	int next;
+	int num;
 } fly_len_t;
 
 // 结构体数组
 extern fly_len_t length[FLY_NUM];
 
 extern int status;
+
+extern int num;
+
+extern int flight;
 
 extern void do_workload_schedule(uint64_t remain);
 

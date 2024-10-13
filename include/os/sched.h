@@ -95,11 +95,7 @@ typedef struct pcb
 
 	// for p2-task5
 	// time chunk for the process
-	uint64_t time_chunk;		
-
-	uint64_t total_running;
-
-	uint64_t start_tick;
+	uint64_t chunk_num;
 
 } pcb_t;
 
