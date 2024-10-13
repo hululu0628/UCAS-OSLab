@@ -47,7 +47,17 @@ void do_scheduler(void)
 				if(length[process_id - 8].done)
 					addToQueue(&current_running->list, &ready_queue);
 				else
-					addToQueue(&current_running->list, ready_queue.next);
+				{
+					switch (num)
+					{
+						case 4: addToQueue(&current_running->list, ready_queue.next);break;
+						case 3: addToQueue(&current_running->list, ready_queue.next->next);break;
+						case 2: addToQueue(&current_running->list, ready_queue.next->next->next);break;
+						case 1: addToQueue(&current_running->list, ready_queue.next->next->next->next);break;
+						case 0: addToQueue(&current_running->list, ready_queue.next->next->next->next->next);break;
+						default: break;
+					}
+				}
 			}
 			else
 				addToQueue(&current_running->list, &ready_queue);

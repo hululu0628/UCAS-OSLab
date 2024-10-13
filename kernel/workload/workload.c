@@ -4,7 +4,8 @@
 #include <printk.h>
 
 fly_len_t length[FLY_NUM];
-int init;
+static int init;
+int num;
 void do_workload_schedule(uint64_t remain)
 {
 	int i;
@@ -35,9 +36,13 @@ void do_workload_schedule(uint64_t remain)
 			if(length[i].remain_length != 0)
 				length[i].done = 0;
 		}
+		num = 0;
 	}
 	if(length[process_id - 8].next == remain)
 	{
 		length[process_id - 8].done = 1;
+		num = 0;
+		for(i=0;i<FLY_NUM;i++)
+			num += length[i].done;
 	}
 }
