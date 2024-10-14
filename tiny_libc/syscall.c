@@ -56,7 +56,7 @@ void sys_reflush(void)
 {
 	/* TODO: [p2-task1] call call_jmptab to implement sys_reflush */
 	// the function we need is screen_flush
-	// call_jmptab(FLUSH,0,0,0,0,0);
+	// call_jmptab(REFLUSH,0,0,0,0,0);
 	/* TODO: [p2-task3] call invoke_syscall to implement sys_reflush */
         invoke_syscall(SYSCALL_REFLUSH, 0, 0, 0, 0, 0);
 }

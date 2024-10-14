@@ -53,7 +53,7 @@ static void init_jmptab(void)
 
 	// TODO: [p2-task1] (S-core) initialize system call table.
 	jmptab[WRITE]		= (volatile long (*)())screen_write;
-	jmptab[FLUSH]		= (volatile long (*)())screen_reflush;
+	jmptab[REFLUSH]		= (volatile long (*)())screen_reflush;
 
 }
 
