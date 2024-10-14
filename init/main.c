@@ -141,7 +141,6 @@ static inline int add_new_task(char * str,int pid)
 		usr_stack = allocUserStack(1);
 		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
 		pcb[pid-1].status = TASK_READY;
-		pcb[pid-1].chunk_num = 0;
 		return 0;
 	}
 	else  
