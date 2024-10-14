@@ -21,7 +21,17 @@ typedef enum {
     MUTEX_RELEASE,
     NUM_ENTRIES,
     WRITE,
-    FLUSH
+    CLEAR,
+    REFLUSH,
+    EXEC,
+    EXIT,
+    KILL,
+    WAITPID,
+    PS,
+    GETPID,
+    BARRIER_INIT,
+    BARRIER_WAIT,
+    BARRIER_DESTROY
 } jmptab_idx_t;
 
 
