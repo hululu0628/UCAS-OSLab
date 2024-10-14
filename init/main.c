@@ -179,15 +179,15 @@ static void init_pcb(void)
 
 	//add_new_task("fly",7);
 
-	add_new_task("fly1", 8);
+	//add_new_task("fly1", 8);
 
-	add_new_task("fly2", 9);
+	//add_new_task("fly2", 9);
 
-	add_new_task("fly3", 10);
+	//add_new_task("fly3", 10);
 
-	add_new_task("fly4", 11);
+	//add_new_task("fly4", 11);
 
-	add_new_task("fly5", 12);
+	//add_new_task("fly5", 12);
 
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */

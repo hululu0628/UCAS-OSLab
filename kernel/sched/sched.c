@@ -41,28 +41,7 @@ void do_scheduler(void)
 
 		if(current_running != &pid0_pcb)
 		{
-			if(process_id > 7 && process_id < 13)	// for fly1~fly5：pid8~12
-			{
-				// 当进程完成了飞行目标，将其放到准备队列末尾
-				if(length[process_id - 8].done)
-					addToQueue(&current_running->list, &ready_queue);
-				else
-				{
-					// 否则，根据未完成飞行目标的进程数，决定将当前进程放在队列哪个位置
-					// 作用是保证所有飞机都完成当前飞行目标再开始下一轮分配
-					switch (num)
-					{
-						case 4: addToQueue(&current_running->list, ready_queue.next);break;
-						case 3: addToQueue(&current_running->list, ready_queue.next->next);break;
-						case 2: addToQueue(&current_running->list, ready_queue.next->next->next);break;
-						case 1: addToQueue(&current_running->list, ready_queue.next->next->next->next);break;
-						case 0: addToQueue(&current_running->list, ready_queue.next->next->next->next->next);break;
-						default: break;
-					}
-				}
-			}
-			else
-				addToQueue(&current_running->list, &ready_queue);
+			addToQueue(&current_running->list, &ready_queue);
 		}
 	}
 	
