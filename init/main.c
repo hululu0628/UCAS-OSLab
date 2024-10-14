@@ -22,7 +22,7 @@
 #include <type.h>
 #include <csr.h>
 
-extern void ret_from_exception();
+extern void ret_from_trap();
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
@@ -110,7 +110,7 @@ static void init_pcb_stack(
 	pcb->user_sp = (reg_t)user_stack;
 
 	// for user process, jump to entrypoint by using sret
-	pt_switchto->regs[0] = (reg_t)ret_from_exception;
+	pt_switchto->regs[0] = (reg_t)ret_from_trap;
 	pt_switchto->regs[1] = pcb->kernel_sp;
 	pt_switchto->regs[2] = 0;
 	pt_switchto->regs[3] = 0;
@@ -165,19 +165,19 @@ static void init_pcb(void)
 	pid0_pcb.status = TASK_RUNNING;
 
 
-	//add_new_task("print1",1);
+	add_new_task("print1",1);
 
-	//add_new_task("print2",2);
+	add_new_task("print2",2);
 
-	//add_new_task("lock1",3);
+	add_new_task("lock1",3);
 
-	//add_new_task("lock2",4);
+	add_new_task("lock2",4);
 
-	//add_new_task("sleep",5);
+	add_new_task("sleep",5);
 
-	//add_new_task("timer",6);
+	add_new_task("timer",6);
 
-	//add_new_task("fly",7);
+	add_new_task("fly",7);
 
 	//add_new_task("fly1", 8);
 
@@ -321,7 +321,7 @@ int main(void)
 	printk("> [INIT] Lock mechanism initialization succeeded.\n");
 
 	// Init interrupt (^_^)
-	init_exception();
+	init_trap();
 	printk("> [INIT] Interrupt processing initialization succeeded.\n");
 
 	// Init system call table (0_0)

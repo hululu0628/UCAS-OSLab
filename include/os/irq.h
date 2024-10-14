@@ -67,12 +67,12 @@ typedef void (*handler_t)(regs_context_t*, uint64_t, uint64_t);
 extern handler_t irq_table[IRQC_COUNT];
 extern handler_t exc_table[EXCC_COUNT];
 
-extern void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause);
+extern void trap_helper(regs_context_t *regs, uint64_t stval, uint64_t scause);
 
 /* exception handler entery */
-extern void exception_handler_entry(void);
-extern void init_exception();
-extern void setup_exception();
+extern void trap_handler_entry(void);
+extern void init_trap();
+extern void setup_trap();
 
 extern void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause);
 extern void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause);

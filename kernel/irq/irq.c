@@ -10,7 +10,7 @@
 handler_t irq_table[IRQC_COUNT];
 handler_t exc_table[EXCC_COUNT];
 
-void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
+void trap_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
 	// TODO: [p2-task3] & [p2-task4] interrupt handler.
 	// call corresponding handler by the value of `scause`
@@ -32,7 +32,7 @@ void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
 	do_scheduler();
 }
 
-void init_exception()
+void init_trap()
 {
 	/* TODO: [p2-task3] initialize exc_table */
 	/* NOTE: handle_syscall, handle_other, etc.*/
@@ -50,7 +50,7 @@ void init_exception()
 	irq_table[IRQC_S_TIMER] = (handler_t)handle_irq_timer;
 
 	/* TODO: [p2-task3] set up the entrypoint of exceptions */
-	setup_exception();
+	setup_trap();
 }
 
 void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause)

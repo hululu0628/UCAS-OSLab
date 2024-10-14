@@ -163,7 +163,7 @@ ENTRY(switch_to)
 	/* TODO: [p2-task1] save all callee save registers on kernel stack,
 	* see the definition of `struct switchto_context` in sched.h*/
 	sd 	ra,SWITCH_TO_RA(sp)	# for user process, ra points to do_scheduler
-					# (do_scheduler->handler->inter_helper->ret_from_exception)
+					# (do_scheduler->handler->inter_helper->ret_from_trap)
 
 	sd 	sp,SWITCH_TO_SP(sp)	# sp points to kernel-stack
 	sd 	s0,SWITCH_TO_S0(sp)
@@ -204,33 +204,33 @@ ENTRY(switch_to)
 	jr ra
 ENDPROC(switch_to)
 
-ENTRY(ret_from_exception)
+ENTRY(ret_from_trap)
 	/* TODO: [p2-task3] restore context via provided macro and return to sepc */
 	/* HINT: remember to check your sp, does it point to the right address? */
 	RESTORE_CONTEXT
 
 	sret
 
-ENDPROC(ret_from_exception)
+ENDPROC(ret_from_trap)
 
-ENTRY(exception_handler_entry)
+ENTRY(trap_handler_entry)
 
 	/* TODO: [p2-task3] save context via the provided macro */
 	SAVE_CONTEXT
 
-	/* TODO: [p2-task3] load ret_from_exception into $ra so that we can return to
-	* ret_from_exception when interrupt_help complete.
+	/* TODO: [p2-task3] load ret_from_trap into $ra so that we can return to
+	* ret_from_trap when interrupt_help complete.
 	*/
-	la	ra,ret_from_exception
+	la	ra,ret_from_trap
 
-	/* TODO: [p2-task3] call interrupt_helper
+	/* TODO: [p2-task3] call trap_helper
 	* NOTE: don't forget to pass parameters for it.
 	*/
 	mv 	a0,sp
 	ld 	a1,OFFSET_REG_STVAL(a0)
 	ld 	a2,OFFSET_REG_SCAUSE(a0)
-	j 	interrupt_helper
+	j 	trap_helper
 
 
 
-ENDPROC(exception_handler_entry)
+ENDPROC(trap_handler_entry)
