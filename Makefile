@@ -137,6 +137,13 @@ gdb:
 run:
 	$(QEMU) $(QEMU_OPTS)
 
+# display cursor after running
+runc: run cursor
+	
+cursor:
+	echo -e "\033[?25h" && clear
+
+
 run-smp:
 	$(QEMU) $(QEMU_OPTS) $(QEMU_SMP_OPT)
 

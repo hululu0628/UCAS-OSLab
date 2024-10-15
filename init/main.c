@@ -212,7 +212,7 @@ static void init_syscall(void)
 	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
 	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
 	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
-	syscall[SYSCALL_WORKLOAD]	= (long (*)())do_workload_schedule;		// for p2-task5
+	//syscall[SYSCALL_WORKLOAD]	= (long (*)())do_workload_schedule;		// for p2-task5
 }
 
 

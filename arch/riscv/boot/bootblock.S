@@ -5,7 +5,9 @@
 // task num location(add in p1-t4)
 .equ taskinfo_size_loc, 0x502001fe
 // taskinfo offset(add in p1-t4)
-.equ taskinfo_sec_num, 0x502001f8
+.equ taskinfo_sec_offset_loc, 0x502001f8
+// number of taskinfo sector(add in p3)
+.equ taskinfo_sec_num_loc, 0x502001f6
 
 // kernel address (move kernel to here, and jmp here to start kernel)
 .equ kernel, 0x50201000
@@ -39,10 +41,11 @@ main:
 
 	// TODO: [p1-task4] load task-related arguments and pass them to kernel
 	// 将image最后的数据搬运到0x50200200
-	li 	a0,taskinfo_sec_num	# where the task information start, in 0x502001f8
+	li 	a0,taskinfo_sec_offset_loc	# where the task information start, in 0x502001f8
 	lw 	a2,0(a0)
+	li 	a0,taskinfo_sec_num_loc		
+	lh 	a1,0(a0)			# size of task information
 	li 	a0,taskinfo		# move data to 0x50200200
-	li 	a1,1			# size of task information(less than one sector), occupies 1 sector
 	li 	a7,11			# call bios_sd_read
 	jal 	bios_func_entry
 

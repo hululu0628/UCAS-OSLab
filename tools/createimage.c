@@ -16,11 +16,12 @@
 #define OS_SIZE_LOC (BOOT_LOADER_SIG_OFFSET - 2)
 //a pointer to the information of tasks, which are stored in the end of image
 #define TASK_INFO_OFFSET (OS_SIZE_LOC - 4)
+#define TASK_SEC_NUM (TASK_INFO_OFFSET - 2)
 #define BOOT_LOADER_SIG_1 0x55
 #define BOOT_LOADER_SIG_2 0xaa
 
 //define the maximum length of the file name(add in p1-t4)
-#define MAXFILENAME 16
+#define MAXFILENAME 32
 
 #define NBYTES2SEC(nbytes) (((nbytes) / SECTOR_SIZE) + ((nbytes) % SECTOR_SIZE != 0))
 
@@ -241,6 +242,8 @@ static void write_padding(FILE *img, int *phyaddr, int new_phyaddr)
 static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
                            short tasknum, FILE * img, int secnum)
 {
+
+	int task_sec_num;
 	// TODO: [p1-task3] & [p1-task4] write image info to some certain places
 	// NOTE: os size, infomation about app-info sector(s) ...
 	//os size in 0x1fc, app num in 0x1fe(p1-task3)
@@ -249,8 +252,11 @@ static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
 	fwrite(taskinfo,sizeof(task_info_t),tasknum,img);
 
 	// write data to the last few bytes of the first sector
-	fseek(img,TASK_INFO_OFFSET,SEEK_SET);
-	// total sectors, occupies 4 bytes
+	fseek(img,TASK_SEC_NUM,SEEK_SET);
+	// number of sectors occupied by the task_info
+	task_sec_num = NBYTES2SEC(tasknum * sizeof(task_info_t));
+	fwrite(&task_sec_num,sizeof(uint16_t),1,img);
+	// total sectors(or task info offset), occupies 4 bytes
 	fwrite(&secnum,sizeof(uint32_t),1,img);
 	// number of sectors occupied by the kernel
 	// occupies 2 bytes

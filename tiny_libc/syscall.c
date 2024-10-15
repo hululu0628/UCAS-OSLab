@@ -103,11 +103,11 @@ void sys_sleep(uint32_t time)
 	invoke_syscall(SYSCALL_SLEEP, (long)time, 0, 0, 0, 0);
 }
 
-// for p2-task5
+/* for p2-task5
 void sys_set_sche_workload(uint64_t remain)
 {
 	invoke_syscall(SYSCALL_WORKLOAD, (long)remain, 0, 0, 0, 0);
-}
+}*/
 
 /************************************************************/
 #ifdef S_CORE

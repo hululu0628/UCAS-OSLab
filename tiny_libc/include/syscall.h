@@ -38,6 +38,6 @@
 #define SYSCALL_MBOX_RECV 55
 
 // for p2-task5
-#define SYSCALL_WORKLOAD 50
+// #define SYSCALL_WORKLOAD 50
 
 #endif
