@@ -27,8 +27,9 @@
 
 #ifndef INCLUDE_LOCK_H_
 #define INCLUDE_LOCK_H_
-
 #include <os/list.h>
+
+void init_ipc(void);
 
 #define LOCK_NUM 16
 
@@ -38,14 +39,14 @@ typedef uint32_t lock_status_t;
 
 typedef struct spin_lock
 {
-    volatile lock_status_t status;
+	volatile lock_status_t status;
 } spin_lock_t;
 
 typedef struct mutex_lock
 {
-    spin_lock_t lock;
-    list_head block_queue;
-    int key;
+	spin_lock_t lock;
+	list_head block_queue;
+	int key;
 } mutex_lock_t;
 
 void init_locks(void);
@@ -56,34 +57,43 @@ void spin_lock_acquire(spin_lock_t *lock);
 void spin_lock_release(spin_lock_t *lock);
 
 int do_mutex_lock_init(int key);
-void do_mutex_lock_acquire(int mlock_idx);
-void do_mutex_lock_release(int mlock_idx);
+void do_mutex_lock_acquire(int mlock_idx);	// atomic
+void do_mutex_lock_release(int mlock_idx);	// atomic
 
 /************************************************************/
-typedef struct barrier
-{
-    // TODO [P3-TASK2 barrier]
-} barrier_t;
 
 #define BARRIER_NUM 16
 
+typedef struct barrier
+{
+	// TODO [P3-TASK2 barrier]
+	list_head block_queue;
+	int key;
+	unsigned goal;
+	unsigned arrived;
+} barrier_t;
+
 void init_barriers(void);
 int do_barrier_init(int key, int goal);
-void do_barrier_wait(int bar_idx);
-void do_barrier_destroy(int bar_idx);
+void do_barrier_wait(int bar_idx);	// atomic
+void do_barrier_destroy(int bar_idx);	// atomic
 
-typedef struct condition
-{
-    // TODO [P3-TASK2 condition]
-} condition_t;
 
 #define CONDITION_NUM 16
 
+typedef struct condition
+{
+	// TODO [P3-TASK2 condition]
+	list_head block_queue;
+	int key;
+	bool status;
+} condition_t;
+
 void init_conditions(void);
 int do_condition_init(int key);
-void do_condition_wait(int cond_idx, int mutex_idx);
-void do_condition_signal(int cond_idx);
-void do_condition_broadcast(int cond_idx);
+void do_condition_wait(int cond_idx, int mutex_idx);	// atomic
+void do_condition_signal(int cond_idx);			// atomic
+void do_condition_broadcast(int cond_idx);		// atomic
 void do_condition_destroy(int cond_idx);
 
 typedef struct semaphore

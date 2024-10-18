@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define A_CORE
+#define C_CORE
 
 
 typedef int32_t pid_t;

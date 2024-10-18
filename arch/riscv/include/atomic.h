@@ -2,7 +2,7 @@
 #define ATOMIC_H
 
 /* from linux/arch/riscv/include/asm/cmpxchg.h */
-
+// cannot use cmpxchg
 #include <type.h>
 
 static inline uint32_t atomic_swap(uint32_t val, ptr_t mem_addr)

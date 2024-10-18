@@ -4,6 +4,16 @@
 #include <atomic.h>
 
 mutex_lock_t mlocks[LOCK_NUM];
+barrier_t barriers[BARRIER_NUM];
+condition_t conditions[CONDITION_NUM];
+
+void init_ipc(void)
+{
+	init_locks();
+	init_barriers();
+	init_conditions();
+}
+
 
 void init_locks(void)
 {
@@ -55,15 +65,109 @@ void do_mutex_lock_acquire(int mlock_idx)
 	   Multiple requests for a lock from the same process can lead to deadlocks */
 	// The interrupt is disabled gloablly in S-mode, but still using atomic operation
 	// The process tries to acquire the lock until it succeed
-	while(atomic_cmpxchg(UNLOCKED, LOCKED, (ptr_t)(&mlocks[mlock_idx].lock.status)) == LOCKED)
+	// For details, see README.md
+	while(mlocks[mlock_idx].lock.status != UNLOCKED)
 		do_block(&current_running->list, &mlocks[mlock_idx].block_queue);
+	mlocks[mlock_idx].lock.status = LOCKED;
 }
 
 void do_mutex_lock_release(int mlock_idx)
 {
 	/* TODO: [p2-task2] release mutex lock */
 
-	atomic_cmpxchg(LOCKED, UNLOCKED,(ptr_t)(&mlocks[mlock_idx].lock.status));
+	mlocks[mlock_idx].lock.status = UNLOCKED;
 	if(&mlocks[mlock_idx].block_queue != mlocks[mlock_idx].block_queue.next)	// queue is not empty
 		do_unblock(mlocks[mlock_idx].block_queue.next);
+}
+
+
+
+void init_barriers(void)
+{
+	for(int i = 0; i < BARRIER_NUM; i++)
+	{
+		barriers[i].block_queue.next = &barriers[i].block_queue;
+		barriers[i].block_queue.prev = &barriers[i].block_queue;
+		barriers[i].block_queue.pcb_ptr = (ptr_t)NULL;
+	}
+}
+
+int do_barrier_init(int key,int goal)
+{
+	barriers[key % BARRIER_NUM].key = key;
+	barriers[key % BARRIER_NUM].goal = goal;
+	barriers[key % BARRIER_NUM].arrived = 0;
+	return key % BARRIER_NUM;
+}
+
+void do_barrier_wait(int bar_idx)
+{
+	barriers[bar_idx].arrived++;
+	if(barriers[bar_idx].arrived < barriers[bar_idx].goal)
+		do_block(&current_running->list, &barriers[bar_idx].block_queue);
+	else
+	{
+		freeQueueToReady(&barriers[bar_idx].block_queue);
+		barriers[bar_idx].arrived = 0;
+	}
+}
+
+void do_barrier_destroy(int bar_idx)
+{
+	barriers[bar_idx].goal = 0;
+}
+
+
+void init_conditions(void)
+{
+	for(int i = 0; i < CONDITION_NUM; i++)
+	{
+		conditions[i].block_queue.next = &conditions[i].block_queue;
+		conditions[i].block_queue.prev = &conditions[i].block_queue;
+		conditions[i].block_queue.pcb_ptr = (ptr_t)NULL;
+	}
+}
+
+int do_condition_init(int key)
+{
+	conditions[key % CONDITION_NUM].key = key;
+	conditions[key % CONDITION_NUM].status = false;
+	return key % CONDITION_NUM;
+}
+
+void do_condition_wait(int cond_idx,int mutex_idx)
+{
+	if(conditions[cond_idx].status == false)
+	{
+		do_mutex_lock_release(mutex_idx);
+		do_block(&current_running->list,&conditions[cond_idx].block_queue);
+		do_mutex_lock_acquire(mutex_idx);
+	}
+	else
+		conditions[cond_idx].status = false;
+}
+
+void do_condition_signal(int cond_idx)
+{
+	if(conditions[cond_idx].block_queue.next != &conditions[cond_idx].block_queue)
+	{
+		do_unblock(conditions[cond_idx].block_queue.next);
+	}
+	else
+		conditions[cond_idx].status = true;
+}
+
+void do_condition_broadcast(int cond_idx)
+{
+	if(conditions[cond_idx].block_queue.next != &conditions[cond_idx].block_queue)
+	{
+		freeQueueToReady(&conditions[cond_idx].block_queue);
+	}
+	else
+		conditions[cond_idx].status = true;
+}
+
+void do_condition_destroy(int cond_idx)
+{
+	freeQueueToReady(&conditions[cond_idx].block_queue);
 }

@@ -146,7 +146,7 @@ pid_t do_exec(char *name, int argc, char **argv)
 			pid = i + 1;	
 			if(add_new_task(name,argc,argv,pid) == -1)
 			{
-				printl("Error: no such tasks");
+				printl("Error: In function do_exec, cannot load task called %s\n",name);
 				return 0;
 			}			
 			addToQueue(&pcb[i].list,&ready_queue);
@@ -160,6 +160,7 @@ pid_t do_exec(char *name, int argc, char **argv)
 void do_exit(void)
 {
 	current_running->status = TASK_EXITED;
+	int pid = current_running->pid;
 	freeQueueToReady(&current_running->wait_list);
 	do_scheduler();
 }

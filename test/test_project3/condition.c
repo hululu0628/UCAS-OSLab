@@ -64,9 +64,10 @@ int main(int argc, char * argv[])
     for (int i = 0; i < NUM_TC + 1; i++) {
         sys_waitpid(pids[i]);
     }
-    
+    printf("Exit\n");
     // Destroy condition
     sys_condition_destroy(handle_cond);
+    printf("Exit\n");
 #endif
 
     return 0;    

@@ -220,6 +220,14 @@ static void init_syscall(void)
 	syscall[SYSCALL_KILL]		= (long (*)())do_kill;
 	syscall[SYSCALL_GETPID]		= (long (*)())do_getpid;
 	syscall[SYSCALL_WAITPID] 	= (long (*)())do_waitpid;
+	syscall[SYSCALL_BARR_INIT]	= (long (*)())do_barrier_init;
+	syscall[SYSCALL_BARR_WAIT]	= (long (*)())do_barrier_wait;
+	syscall[SYSCALL_BARR_DESTROY]	= (long (*)())do_barrier_destroy;
+	syscall[SYSCALL_COND_INIT]	= (long (*)())do_condition_init;
+	syscall[SYSCALL_COND_WAIT]	= (long (*)())do_condition_wait;
+	syscall[SYSCALL_COND_SIGNAL]	= (long (*)())do_condition_signal;
+	syscall[SYSCALL_COND_BROADCAST]	= (long (*)())do_condition_broadcast;
+	syscall[SYSCALL_COND_DESTROY]	= (long (*)())do_condition_destroy;
 }
 
 /************************************************************/
@@ -245,7 +253,7 @@ int main(void)
 	time_base = bios_read_fdt(TIMEBASE);
 
 	// Init lock mechanism o(´^｀)o
-	init_locks();
+	init_ipc();
 	printk("> [INIT] Lock mechanism initialization succeeded.\n");
 
 	// Init interrupt (^_^)
