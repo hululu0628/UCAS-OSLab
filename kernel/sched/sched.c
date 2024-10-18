@@ -1,7 +1,8 @@
-#include "os/kernel.h"
+#include <os/kernel.h>
 #include <os/list.h>
 #include <os/lock.h>
 #include <os/sched.h>
+#include <os/exec.h>
 #include <os/time.h>
 #include <os/mm.h>
 #include <os/workload.h>	// for p2-task5
@@ -39,6 +40,7 @@ void do_scheduler(void)
 	{
 		current_running->status = TASK_READY;
 
+		// Round Robin
 		if(current_running != &pid0_pcb)
 		{
 			addToQueue(&current_running->list, &ready_queue);
@@ -96,4 +98,90 @@ void do_unblock(list_node_t *pcb_node)
 	deleteNode(pcb_node);
 	pcb_unblock->status = TASK_READY;
 	addToQueue(pcb_node, &ready_queue);
+}
+
+void do_process_show()
+{
+	int i;
+	int j = 0;
+	int has_process = 0;
+	for(i = 0; i < NUM_MAX_TASK; i++)
+	{
+		if(pcb[i].status != TASK_EXITED)
+		{
+			if(has_process == 0)
+			{
+				printk("[Process Table]:\n");
+				has_process = 1;
+			}
+			printk("[%d] PID: %d ",j,pcb[i].pid);
+			j++;
+			if(pcb[i].status == TASK_RUNNING)
+				printk("STATUS: %s\n","TASK_RUNNING");
+			else if(pcb[i].status == TASK_BLOCKED)
+				printk("STATUS: %s\n","TASK_BLOCKED");
+			else if(pcb[i].status == TASK_READY)
+				printk("STATUS: %s\n","TASK_READY");
+		}
+	}
+	if(has_process == 0)
+	{
+		printk("Huh? There is no process?");
+	}
+}
+
+pid_t do_getpid()
+{
+	return current_running->pid;
+}
+
+pid_t do_exec(char *name, int argc, char **argv)
+{
+	int i;
+	pid_t pid = 0;
+	for(i = 0; i < NUM_MAX_TASK; i++)
+	{
+		if(pcb[i].status == TASK_EXITED)
+		{		
+			pid = i + 1;	
+			if(add_new_task(name,argc,argv,pid) == -1)
+			{
+				printl("Error: no such tasks");
+				return 0;
+			}			
+			addToQueue(&pcb[i].list,&ready_queue);
+			break;
+		}
+	}
+	return pid;
+}
+
+// 回收内存
+void do_exit(void)
+{
+	current_running->status = TASK_EXITED;
+	freeQueueToReady(&current_running->wait_list);
+	do_scheduler();
+}
+
+int do_kill(pid_t pid)
+{
+	if(pcb[pid - 1].status != TASK_EXITED)
+	{
+		deleteNode(&pcb[pid - 1].list);
+		pcb[pid - 1].status = TASK_EXITED;
+		freeQueueToReady(&pcb[pid - 1].wait_list);
+		return 1;
+	}
+	return 0;
+}
+
+int do_waitpid(pid_t pid)
+{
+	if(pcb[pid - 1].status != TASK_EXITED)
+	{
+		do_block(&current_running->list, &pcb[pid - 1].wait_list);
+		return pid;
+	}
+	return 0;
 }

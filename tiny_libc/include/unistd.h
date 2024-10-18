@@ -25,8 +25,12 @@ void sys_set_sche_workload(uint64_t remain);
 
 /************************************************************/
 /* TODO: [P3 task1] ps, getchar */
+// and putchar
 void sys_ps(void);
 int  sys_getchar(void);
+void sys_putchar(int ch);
+
+void sys_clear(void);
 
 /* TODO: [P3 task1] exec, exit, kill waitpid */
 // S-core

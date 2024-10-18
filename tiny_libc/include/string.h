@@ -13,5 +13,6 @@ char *strncpy(char *dest, const char *src, int n);
 char *strcat(char *dest, const char *src);
 int strlen(const char *src);
 void strrev(char *str);
+int strchr(const char *str, int c);
 
 #endif

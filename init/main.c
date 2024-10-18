@@ -5,6 +5,7 @@
 #include <os/loader.h>
 #include <os/irq.h>
 #include <os/sched.h>
+#include <os/exec.h>		//for p3-task1
 #include <os/list.h>
 #include <os/lock.h>
 #include <os/kernel.h>
@@ -85,8 +86,23 @@ static void init_pipe_info(void)
 /************************************************************/
 static void init_pcb_stack(
     ptr_t kernel_stack, ptr_t user_stack, ptr_t entry_point,
-    pcb_t *pcb)
+    pcb_t *pcb, int argc, char **argv)
 {
+	// P3, pass parameter to the user stack
+	ptr_t argv_base;
+	ptr_t usp;
+	argv_base = user_stack - sizeof(char *) * argc;
+	user_stack = argv_base;
+	usp = argv_base;
+	for(int i = 0; i < argc; i++)
+	{
+		user_stack = user_stack - (strlen(argv[i]) + 1);
+		strcpy((char *)user_stack,argv[i]);
+		memcpy((uint8_t *)usp, (const uint8_t *)&user_stack, sizeof(char *));
+		usp += sizeof(char *);
+	}
+	user_stack = user_stack & 0xffffffffffffff80;
+
 	/* TODO: [p2-task3] initialization of registers on kernel stack
 	* HINT: sp, ra, sepc, sstatus
 	* NOTE: To run the task in user mode, you should set corresponding bits
@@ -98,6 +114,8 @@ static void init_pcb_stack(
 	pt_regs->sepc = entry_point;		// jump to entrypoint using sret
 	pt_regs->regs[SP] = user_stack;
 	pt_regs->regs[TP] = (reg_t)pcb;
+	pt_regs->regs[A0] = (reg_t)argc;
+	pt_regs->regs[A1] = (reg_t)argv_base;
 
 
 	/* TODO: [p2-task1] set sp to simulate just returning from switch_to
@@ -130,21 +148,21 @@ static void init_pcb_stack(
 
 
 
-static inline int add_new_task(char * str,int pid)
+int add_new_task(char * str, int argc, char *argv[], int pid)
 {
 	ptr_t entrypoint;
 	ptr_t kernel_stack,usr_stack;
 
 	if((entrypoint = load_task_img_by_name(str)) != 0)
 	{
-		kernel_stack = allocKernelStack(1);		// only alloc one page
-		usr_stack = allocUserStack(1);
-		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1]);
+		kernel_stack = allocKernelStack(2);
+		usr_stack = allocUserStack(2);
+		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1],argc,argv);
 		pcb[pid-1].status = TASK_READY;
 		return 0;
 	}
 	else  
-		return 1;
+		return -1;
 }
 
 
@@ -159,36 +177,16 @@ static void init_pcb(void)
 		pcb[i].list.prev = NULL;
 		pcb[i].list.next = NULL;
 		pcb[i].list.pcb_ptr = (ptr_t)&pcb[i];
-		pcb[i].status = TASK_EXITED;			// useless
+		pcb[i].wait_list.next = &pcb[i].wait_list;
+		pcb[i].wait_list.prev = &pcb[i].wait_list;
+		pcb[i].status = TASK_EXITED;			// useless?
 	}
 
 	pid0_pcb.status = TASK_RUNNING;
 
 
-	add_new_task("print1",1);
-
-	add_new_task("print2",2);
-
-	add_new_task("lock1",3);
-
-	add_new_task("lock2",4);
-
-	add_new_task("sleep",5);
-
-	add_new_task("timer",6);
-
-	add_new_task("fly",7);
-
-	//add_new_task("fly1", 8);
-
-	//add_new_task("fly2", 9);
-
-	//add_new_task("fly3", 10);
-
-	//add_new_task("fly4", 11);
-
-	//add_new_task("fly5", 12);
-
+	add_new_task("shell",0,NULL,1);
+	//add_new_task("add",0,NULL,2);
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
 
@@ -213,87 +211,17 @@ static void init_syscall(void)
 	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
 	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
 	//syscall[SYSCALL_WORKLOAD]	= (long (*)())do_workload_schedule;		// for p2-task5
+	syscall[SYSCALL_PUTCHAR]	= (long (*)())screen_putchar;
+	syscall[SYSCALL_GETCHAR]	= (long (*)())bios_getchar;
+	syscall[SYSCALL_PS]		= (long (*)())do_process_show;
+	syscall[SYSCALL_EXEC] 		= (long (*)())do_exec;
+	syscall[SYSCALL_EXIT]		= (long (*)())do_exit;
+	syscall[SYSCALL_CLEAR]		= (long (*)())screen_clear;
+	syscall[SYSCALL_KILL]		= (long (*)())do_kill;
+	syscall[SYSCALL_GETPID]		= (long (*)())do_getpid;
+	syscall[SYSCALL_WAITPID] 	= (long (*)())do_waitpid;
 }
 
-
-static inline void getTask()
-{
-	char buf[64];
-	int error;
-	int c;
-	int i = 0;
-	int pid = 1;
-	while(1)
-	{
-		if(((c=bios_getchar())==13 && i == 0) || pid > 16)
-		{
-			break;
-		}
-		else if(i < 49)
-		{
-			if(c == 13)	// press Enter
-			{
-				// refresh buff
-				buf[i] = '\0';
-				i = 0;
-
-				bios_putchar(10);	// move the cursor to the next line
-
-				if(strcmp(buf,"task1") == 0)
-				{
-					add_new_task("print1", pid++);
-					add_new_task("print2", pid++);
-					add_new_task("fly", pid++);
-				}
-				else if(strcmp(buf, "task2") == 0)
-				{
-					add_new_task("lock1", pid++);
-					add_new_task("lock2", pid++);
-					add_new_task("fly", pid++);
-				}
-				else if(strcmp(buf, "task3") == 0 || strcmp(buf, "task4") == 0)
-				{
-					add_new_task("print1", pid++);
-					add_new_task("print2", pid++);
-					add_new_task("lock1", pid++);
-					add_new_task("lock2", pid++);
-					add_new_task("sleep", pid++);
-					add_new_task("timer", pid++);
-					add_new_task("fly", pid++);
-				}
-				else
-				{
-					error = add_new_task(buf, pid);
-					if(error)
-						bios_putstr("\033[31mERROR:\033[0m no such task\n\r");
-					else  
-						pid++;
-				}
-
-			}
-			else if(c != -1)
-			{
-				if(c != 127)
-				{
-					bios_putchar(c);
-					buf[i++] = c;
-				}
-				else
-				{
-					// after pressing Backspace
-					if(i > 0)
-						buf[--i] = '\0';
-					bios_putstr("\b \b");
-				}
-			}
-		}
-		else
-		{
-			bios_putstr("\n\r\033[33mWARNING:\033[0m the name is too long\n\r");
-			i = 0;
-		}
-	}
-}
 /************************************************************/
 
 int main(void)
@@ -330,7 +258,7 @@ int main(void)
 
 	// Init screen (QAQ)
 	init_screen();
-	printk("> [INIT] SCREEN initialization succeeded.\n");
+	// printk("> [INIT] SCREEN initialization succeeded.\n");
 
 
 	/*

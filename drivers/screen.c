@@ -13,6 +13,7 @@
 char new_screen[SCREEN_HEIGHT * SCREEN_WIDTH] = {0};
 char old_screen[SCREEN_HEIGHT * SCREEN_WIDTH] = {0};
 
+
 /* cursor position */
 static void vt100_move_cursor(int x, int y)
 {
@@ -35,29 +36,59 @@ static void vt100_hidden_cursor()
 }
 
 /* write a char */
+// 屏幕输出会出现神秘问题？
+// 已解决：分配的栈空间太小
+void screen_putchar(char ch)
+{
+	screen_write_ch(ch);
+	screen_reflush();
+}
 /* write a char */
 void screen_write_ch(char ch)
 {
-    if (ch == '\n')
-    {
-        current_running->cursor_x = 0;
-        if (current_running->cursor_y < SCREEN_HEIGHT)
-            current_running->cursor_y++;
-    }
-    else if (ch == '\b' || ch == '\177')
-    {	
-        // TODO: [P3] support backspace here
-    }
-    else
-    {
-        new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ch;
-        if (++current_running->cursor_x >= SCREEN_WIDTH)
-        {
-            current_running->cursor_x = 0;
-            if (current_running->cursor_y < SCREEN_HEIGHT)
-                current_running->cursor_y++;
-        }
-    }
+	if (ch == '\n' || ch == '\r')
+	{
+		current_running->cursor_x = 0;
+		if (current_running->cursor_y < SCREEN_HEIGHT)
+		{
+			current_running->cursor_y++;
+		}
+	}
+	else if (ch == '\b' || ch == '\177')
+	{	
+		// TODO: [P3] support backspace here
+		// 若在正常情况下，通过enter换行会使得上一行的末尾字符为空白
+		// 以下实现也只保证在正常情况下出现预期的效果
+		if(current_running->cursor_x > 0)
+		{
+			current_running->cursor_x--;
+			new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ' ';
+		}
+		else if(current_running->cursor_x == 0)
+		{
+			if(current_running->cursor_y > 0)
+			{
+				if(new_screen[SCREEN_LOC(SCREEN_WIDTH - 1, current_running->cursor_y - 1)] != ' ')
+				{
+					current_running->cursor_x = SCREEN_WIDTH - 1;
+					current_running->cursor_y--;
+					new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ' ';
+				}
+			}
+		}
+	}
+	else
+	{
+		new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ch;
+		if (++current_running->cursor_x >= SCREEN_WIDTH)
+		{
+			current_running->cursor_x = 0;
+			if (current_running->cursor_y < SCREEN_HEIGHT)
+			{
+				current_running->cursor_y++;
+			}
+		}
+	}
 }
 
 

@@ -38,6 +38,6 @@ int main(int argc, char * argv[])
     printf("Done \n\r");
     *args->result = result;
 #endif
-
+    
     sys_exit();
 }

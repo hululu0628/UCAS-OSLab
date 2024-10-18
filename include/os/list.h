@@ -65,4 +65,7 @@ void allocReadyProcess();
 // get the next process from the head of ready queue
 ptr_t getProcess();
 
+// free queue
+void freeQueueToReady(list_head * head);
+
 #endif

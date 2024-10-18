@@ -6,4 +6,7 @@
 int printf(const char *fmt, ...);
 int vprintf(const char *fmt, va_list va);
 
+int getchar(void);
+int gets(char *str);
+
 #endif

@@ -1,4 +1,3 @@
-#include "type.h"
 #include <os/list.h>
 #include <os/sched.h>
 void addToQueue(list_node_t * listnode, list_head * queue)
@@ -35,4 +34,12 @@ ptr_t getProcess()
 		return (ptr_t)FIND_PCB(ready_queue.next);
 	else
 		return (ptr_t)(&pid0_pcb);
+}
+
+void freeQueueToReady(list_head * head)
+{
+	while(head->next != head)
+	{
+		do_unblock(head->next);
+	}
 }

@@ -23,13 +23,13 @@ ENTRY(_start)
 	sd 	a6,112(sp)
 	sd 	a7,120(sp)
 
-	la 	a0,__bss_start
-	la 	a1,__BSS_END__
-	bge 	a0,a1,EMPBSS
+	la 	t0,__bss_start
+	la 	t1,__BSS_END__
+	bge 	t0,t1,EMPBSS
 FLAT:
-	sb 	zero,(a0)
-	addi 	a0,a0,1
-	blt 	a0,a1,FLAT
+	sb 	zero,(t0)
+	addi 	t0,t0,1
+	blt 	t0,t1,FLAT
 EMPBSS:
 
 	/* TODO: [p1-task3] enter main function */
@@ -52,9 +52,9 @@ EMPBSS:
 	ld 	t1,8(sp)
 	ld 	t0,0(sp)
 	addi 	sp,sp,128
-	ret
     /************************************************************/
     /* TODO: [P3] call sys_exit */
+	jal	sys_exit
     /************************************************************/
 // while(1) loop, unreachable here
 loop:

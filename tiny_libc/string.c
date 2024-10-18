@@ -106,3 +106,16 @@ void strrev(char *str)
         str[j] = tmp;
     }
 }
+
+int strchr(const char *str, int c)
+{
+	int i;
+	for(i = 0; str[i] != '\0'; i++)
+	{
+		if(str[i] == c)
+		{
+			return i;
+		}
+	}
+	return i;
+}
