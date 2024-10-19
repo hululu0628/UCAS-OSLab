@@ -25,7 +25,6 @@ int main(int argc, char *argv[])
 #ifndef S_CORE
     assert(argc >= 1);
     int print_location = (argc == 1) ? 0 : atoi(argv[1]);
-
     // open two mailboxs
     int handle_mq = sys_mbox_open(STR_MBOX);
     int handle_posmq = sys_mbox_open(POS_MBOX);    

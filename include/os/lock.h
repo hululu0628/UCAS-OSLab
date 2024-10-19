@@ -109,20 +109,30 @@ void do_semaphore_up(int sema_idx);
 void do_semaphore_down(int sema_idx);
 void do_semaphore_destroy(int sema_idx);
 
+
+#define MBOX_NUM 16
+
 #define MAX_MBOX_LENGTH (64)
+#define MAX_MBOX_NAME 32
 
 typedef struct mailbox
 {
-    // TODO [P3-TASK2 mailbox]
+    	// TODO [P3-TASK2 mailbox]
+	char name[MAX_MBOX_NAME];
+	int ref_cnt;
+	list_head send_block_queue;
+	list_head rev_block_queue;
+	uint8_t msg_array[MAX_MBOX_LENGTH];
+	int head,tail;
+	int remain_length;
 } mailbox_t;
 
-#define MBOX_NUM 16
+
 void init_mbox();
 int do_mbox_open(char *name);
 void do_mbox_close(int mbox_idx);
 int do_mbox_send(int mbox_idx, void * msg, int msg_length);
 int do_mbox_recv(int mbox_idx, void * msg, int msg_length);
-
 /************************************************************/
 
 #endif

@@ -31,13 +31,12 @@ int main()
 #ifndef S_CORE
     // open two mailboxs
     int handle_mq = sys_mbox_open(STR_MBOX);
-    int handle_posmq = sys_mbox_open(POS_MBOX); 
-
+    int handle_posmq = sys_mbox_open(POS_MBOX);
     int len = 0;
     char strBuffer[MAX_MBOX_LENGTH - sizeof(MsgHeader_t)];
     clientSendMsg(handle_mq, initReq, initReqLen);
     int position = 0;
-    sys_mbox_recv(handle_posmq, &position, sizeof(int));
+    sys_mbox_recv(handle_posmq, &position, sizeof(int));	// ???
     int blocked = 0;
     //int64_t bytes = 0;
     int64_t bytes = initReqLen;

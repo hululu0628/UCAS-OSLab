@@ -142,6 +142,7 @@ void gettoken(void)
 	int start,end;
 	start = 0;
 	end = strchr(cmdstr,' ');
+	cmd.argc = 0;
 	if(cmdstr[end] != '\0')
 	{
 		strncpy(token, &cmdstr[start], end - start);
