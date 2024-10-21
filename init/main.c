@@ -2,6 +2,7 @@
 #include <asm.h>
 #include <asm/unistd.h>
 #include <asm/regs.h>
+#include <os/smp.h>
 #include <os/loader.h>
 #include <os/irq.h>
 #include <os/sched.h>
@@ -13,13 +14,10 @@
 #include <os/string.h>
 #include <os/mm.h>
 #include <os/time.h>
-#include <os/workload.h>	// for p2-task5
 #include <sys/syscall.h>
 #include <screen.h>
 #include <printk.h>
 #include <assert.h>
-#include <os/pipe.h>		// for p1-task5, 约定了存放字符串的位置和大小，以及指向存放队列的两个指针
-#include <os/batch.h>		// for p1-task5, batch_sh函数声明，以及task_queue的定义
 #include <type.h>
 #include <csr.h>
 
@@ -68,19 +66,6 @@ static void init_task_info(void)
 	tasknum = *((int *)0x502001fe);
 
 }
-
-//(for p1-t5)
-/*
-static void init_pipe_info(void)
-{
-	char** pipe_ptr;
-	pipe_ptr = (char **)PIPE_HEAD_ADDR;
-	*pipe_ptr = (char *)PIPE_BUFFER_ADDR;
-	**pipe_ptr = 0;
-	pipe_ptr = (char **)PIPE_TAIL_ADDR;
-	*pipe_ptr = (char *)PIPE_BUFFER_ADDR;
-}
-*/
 
 
 /************************************************************/
@@ -155,8 +140,8 @@ int add_new_task(char * str, int argc, char *argv[], int pid)
 
 	if((entrypoint = load_task_img_by_name(str)) != 0)
 	{
-		kernel_stack = allocKernelStack(2);
-		usr_stack = allocUserStack(2);
+		kernel_stack = allocKernelStack(3);
+		usr_stack = allocUserStack(3);
 		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1],argc,argv);
 		pcb[pid-1].status = TASK_READY;
 		return 0;
@@ -170,6 +155,7 @@ static void init_pcb(void)
 {
 	/* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
 	int i;
+	int current_cpuid = get_current_cpu_id();
 	// initialize pcb array
 	for(i = 0; i < NUM_MAX_TASK; i++)
 	{
@@ -180,18 +166,21 @@ static void init_pcb(void)
 		pcb[i].wait_list.next = &pcb[i].wait_list;
 		pcb[i].wait_list.prev = &pcb[i].wait_list;
 		pcb[i].status = TASK_EXITED;			// useless?
+		pcb[i].mlock_idx = -1;
+		pcb[i].mbox_idx = -1;
 	}
 
-	pid0_pcb.status = TASK_RUNNING;
+	/* TODO: [p2-task1] remember to initialize 'current_running' */
+
+	pid0_pcb[current_cpuid].status = TASK_RUNNING;
+	current_running = &pid0_pcb[current_cpuid];		// current running is kernel
+	process_id[current_cpuid] = pid0_pcb[current_cpuid].pid;
 
 
 	add_new_task("shell",0,NULL,1);
 	//add_new_task("add",0,NULL,2);
 
-	/* TODO: [p2-task1] remember to initialize 'current_running' */
-
-	current_running = &pid0_pcb;		// current running is kernel
-	process_id = pid0_pcb.pid;		//
+	
 
 	allocReadyProcess();
 
@@ -210,7 +199,6 @@ static void init_syscall(void)
 	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
 	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
 	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
-	//syscall[SYSCALL_WORKLOAD]	= (long (*)())do_workload_schedule;		// for p2-task5
 	syscall[SYSCALL_PUTCHAR]	= (long (*)())screen_putchar;
 	syscall[SYSCALL_GETCHAR]	= (long (*)())bios_getchar;
 	syscall[SYSCALL_PS]		= (long (*)())do_process_show;
@@ -238,40 +226,51 @@ static void init_syscall(void)
 
 int main(void)
 {
-	
-	// Init jump table provided by kernel and bios(ΦωΦ)
-	init_jmptab();
+	if(get_current_cpu_id() == 0)
+	{
+		// Init jump table provided by kernel and bios(ΦωΦ)
+		init_jmptab();
 
-	// Init task information (〃'▽'〃)
-	init_task_info();
+		// Init task information (〃'▽'〃)
+		init_task_info();
 
-	// Output 'Hello OS!'
-	bios_putstr("Hello OS!\n\r");
-	
+		// Output 'Hello OS!'
+		bios_putstr("Hello OS!\n\r");
+		
 
-	// Init Process Control Blocks |•'-'•) ✧
-	init_pcb();
-	printk("> [INIT] PCB initialization succeeded.\n");
+		// Init Process Control Blocks |•'-'•) ✧
+		init_pcb();
+		printk("> [INIT] PCB initialization succeeded.\n");
 
-	// Read CPU frequency (｡•ᴗ-)_
-	time_base = bios_read_fdt(TIMEBASE);
+		// Read CPU frequency (｡•ᴗ-)_
+		time_base = bios_read_fdt(TIMEBASE);
 
-	// Init lock mechanism o(´^｀)o
-	init_ipc();
-	printk("> [INIT] Lock mechanism initialization succeeded.\n");
+		// Init lock mechanism o(´^｀)o
+		init_ipc();
+		printk("> [INIT] Lock mechanism initialization succeeded.\n");
 
-	// Init interrupt (^_^)
-	init_trap();
-	printk("> [INIT] Interrupt processing initialization succeeded.\n");
+		// Init interrupt (^_^)
+		init_trap();
+		printk("> [INIT] Interrupt processing initialization succeeded.\n");
 
-	// Init system call table (0_0)
-	init_syscall();
-	printk("> [INIT] System call initialized successfully.\n");
+		// Init system call table (0_0)
+		init_syscall();
+		printk("> [INIT] System call initialized successfully.\n");
 
-	// Init screen (QAQ)
-	init_screen();
-	// printk("> [INIT] SCREEN initialization succeeded.\n");
+		// Init screen (QAQ)
+		init_screen();
+		// printk("> [INIT] SCREEN initialization succeeded.\n");
 
+		wakeup_other_hart();
+
+		printl("core 0\n");
+
+	}
+	else
+	{
+		smp_init();
+		printl("core 1\n");
+	}
 
 	/*
 	do_sleep(2);

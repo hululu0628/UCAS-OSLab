@@ -1,4 +1,5 @@
 #include <asm/biosdef.h>
+#include <csr.h>
 
 // os size location (os_size could be sectors [p1-task3] or bytes [p1-task4])
 .equ os_size_loc, 0x502001fc
@@ -23,7 +24,8 @@
 main:
 	// fence on all memory and I/O
 	fence
-    // a0 is mhartid
+    	// a0 is mhartid
+	csrr a0, CSR_MHARTID
 	bnez a0, secondary
 
 	// TODO: [p1-task1] call BIOS to print string "It's bootblock!"
@@ -58,6 +60,17 @@ secondary:
 	 * 2. let stvec pointer to kernel_main
 	 * 3. enable software interrupt for ipi
 	 */
+	csrw CSR_SIE, zero
+	csrw CSR_SIP, zero
+
+	la 	t0,kernel
+	csrw 	stvec,t0
+
+	li	t0,SIE_SSIE
+	csrs 	CSR_SIE,t0
+
+	li t0, SR_SIE
+	csrs CSR_SSTATUS, t0
 
 wait_for_wakeup:
 	wfi

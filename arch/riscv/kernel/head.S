@@ -6,7 +6,8 @@
 #include <asm.h>
 #include <csr.h>
 
-#define KERNEL_STACK		0x50501000	// in p1: 0x50500000
+#define KERNEL_STACK_0		0x504ff000	// in p1: 0x50500000
+#define KERNEL_STACK_1		0x50501000
 
 .section ".entry_function","ax"
 ENTRY(_start)
@@ -15,6 +16,10 @@ ENTRY(_start)
 	csrw CSR_SIP, zero
 
   /* TODO: [p1-task2] clear BSS for flat non-ELF images */
+  
+	csrr 	a0, CSR_MHARTID
+	bnez 	a0, secondary
+
 	la 	a0,__bss_start	
 	la 	a1,__BSS_END__
 	bge 	a0,a1,EMPBSS
@@ -24,9 +29,14 @@ FLAT:
 	blt 	a0,a1,FLAT		
 EMPBSS:
   /* TODO: [p1-task2] setup C environment */
-	li 	sp,KERNEL_STACK		# set kernel stack pointer to 0x50501000
-	li 	fp,KERNEL_STACK		# not using fp, but still initialising it
+	li 	sp,KERNEL_STACK_0	# set kernel stack pointer to 0x50501000
+	li 	fp,KERNEL_STACK_0	# not using fp, but still initialising it
 	j 	main			# jump to kernel, no need to return
+
+secondary:
+	li 	sp,KERNEL_STACK_1
+	li 	fp,KERNEL_STACK_1
+	j 	main
 
 loop:
 	wfi

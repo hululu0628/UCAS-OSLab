@@ -31,6 +31,7 @@
 
 #include <type.h>
 #include <os/list.h>
+#include <os/smp.h>
 
 #define NUM_MAX_TASK 16
 
@@ -95,6 +96,10 @@ typedef struct pcb
 	/* time(seconds) to wake up sleeping PCB */
 	uint64_t wakeup_time;
 
+	/* mutex and mailbox index */
+	int mlock_idx;
+	int mbox_idx;
+
 } pcb_t;
 
 /* ready queue to run */
@@ -105,11 +110,11 @@ extern list_head sleep_queue;
 
 /* current running task PCB */
 register pcb_t * current_running asm("tp");
-extern pid_t process_id;
+extern pid_t process_id[NR_CPUS];
 
 extern pcb_t pcb[NUM_MAX_TASK]; 	// pid from 1 to 16
-extern pcb_t pid0_pcb;
-extern const ptr_t pid0_stack;
+extern pcb_t pid0_pcb[NR_CPUS];
+extern const ptr_t pid0_stack[NR_CPUS];
 
 extern void switch_to(pcb_t *prev, pcb_t *next);
 void do_scheduler(void);

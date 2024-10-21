@@ -20,8 +20,6 @@ int sys_mutex_init(int key);
 void sys_mutex_acquire(int mutex_idx);
 void sys_mutex_release(int mutex_idx);
 
-// for p2-task5
-void sys_set_sche_workload(uint64_t remain);
 
 /************************************************************/
 /* TODO: [P3 task1] ps, getchar */

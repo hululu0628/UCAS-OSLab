@@ -73,6 +73,7 @@ void do_mutex_lock_acquire(int mlock_idx)
 	while(mlocks[mlock_idx].lock.status != UNLOCKED)
 		do_block(&current_running->list, &mlocks[mlock_idx].block_queue);
 	mlocks[mlock_idx].lock.status = LOCKED;
+	current_running->mlock_idx = mlock_idx;
 }
 
 void do_mutex_lock_release(int mlock_idx)
@@ -82,6 +83,7 @@ void do_mutex_lock_release(int mlock_idx)
 	mlocks[mlock_idx].lock.status = UNLOCKED;
 	if(&mlocks[mlock_idx].block_queue != mlocks[mlock_idx].block_queue.next)	// queue is not empty
 		do_unblock(mlocks[mlock_idx].block_queue.next);
+	current_running->mlock_idx = -1;
 }
 
 
@@ -196,6 +198,7 @@ int do_mbox_open(char *name)
 		if(mailboxes[i].name[0] != '\0' && strcmp(mailboxes[i].name,name) == 0)
 		{
 			mailboxes[i].ref_cnt++;
+			current_running->mbox_idx = i;
 			return i;
 		}
 	}
@@ -205,6 +208,7 @@ int do_mbox_open(char *name)
 		{
 			strcpy(mailboxes[i].name, name);
 			mailboxes[i].ref_cnt++;
+			current_running->mbox_idx = i;
 			return i;
 		}
 	}
@@ -221,6 +225,7 @@ void do_mbox_close(int mbox_idx)
 		mailboxes[mbox_idx].head = 0;
 		mailboxes[mbox_idx].tail = 0;
 		mailboxes[mbox_idx].remain_length = MAX_MBOX_LENGTH;
+		current_running->mbox_idx = -1;
 	}
 	else if(mailboxes[mbox_idx].ref_cnt < 0)
 	{

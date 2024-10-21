@@ -39,7 +39,7 @@ ptr_t getProcess()
 	if(ready_queue.next != &ready_queue)
 		return (ptr_t)FIND_PCB(ready_queue.next);
 	else
-		return (ptr_t)(&pid0_pcb);
+		return (ptr_t)(&pid0_pcb[get_current_cpu_id()]);
 }
 
 void freeQueueToReady(list_head * head)
