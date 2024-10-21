@@ -140,8 +140,8 @@ int add_new_task(char * str, int argc, char *argv[], int pid)
 
 	if((entrypoint = load_task_img_by_name(str)) != 0)
 	{
-		kernel_stack = allocKernelStack(3);
-		usr_stack = allocUserStack(3);
+		kernel_stack = allocKernelStack(1);
+		usr_stack = allocUserStack(4);
 		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1],argc,argv);
 		pcb[pid-1].status = TASK_READY;
 		return 0;
@@ -173,16 +173,17 @@ static void init_pcb(void)
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
 
 	pid0_pcb[current_cpuid].status = TASK_RUNNING;
+	pid0_pcb[current_cpuid].current_core_id = MASK_ZERO;
 	current_running = &pid0_pcb[current_cpuid];		// current running is kernel
 	process_id[current_cpuid] = pid0_pcb[current_cpuid].pid;
 
 
-	add_new_task("shell",0,NULL,1);
-	//add_new_task("add",0,NULL,2);
-
-	
-
-	allocReadyProcess();
+	// load shell
+	int shell_argc = 2;
+	char *shell_argv[shell_argc];
+	shell_argv[0] = "0x3";
+	shell_argv[1] = "shell";
+	do_taskset(shell_argc, shell_argv);
 
 }
 
@@ -191,6 +192,7 @@ static void init_syscall(void)
 	// TODO: [p2-task3] initialize system call table.
 	syscall[SYSCALL_SLEEP] 		= (long (*)())do_sleep;
 	syscall[SYSCALL_YIELD] 		= (long (*)())do_scheduler;
+	syscall[SYSCALL_TASKSET]	= (long (*)())do_taskset;
 	syscall[SYSCALL_WRITE] 		= (long (*)())screen_write;
 	syscall[SYSCALL_CURSOR] 	= (long (*)())screen_move_cursor;
 	syscall[SYSCALL_REFLUSH] 	= (long (*)())screen_reflush;

@@ -12,8 +12,10 @@
 pcb_t pcb[NUM_MAX_TASK];
 const ptr_t pid0_stack[NR_CPUS] = {INIT_KERNEL_STACK - PAGE_SIZE, INIT_KERNEL_STACK + PAGE_SIZE};
 pcb_t pid0_pcb[NR_CPUS] = {
-	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK - PAGE_SIZE,.user_sp = INIT_KERNEL_STACK - PAGE_SIZE},
-	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK + PAGE_SIZE,.user_sp = INIT_KERNEL_STACK + PAGE_SIZE}
+	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK - PAGE_SIZE,.user_sp = INIT_KERNEL_STACK - PAGE_SIZE,
+	 .core_mask = MASK_ZERO,.mlock_idx = -1,.mbox_idx = -1},
+	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK + PAGE_SIZE,.user_sp = INIT_KERNEL_STACK + PAGE_SIZE,
+	 .core_mask = MASK_ONE,.mlock_idx = -1,.mbox_idx = -1}
 };
 
 LIST_HEAD(ready_queue);
@@ -35,6 +37,7 @@ void do_scheduler(void)
 	// TODO: [p2-task1] Modify the current_running pointer.
 	int current_cpuid = get_current_cpu_id();
 	pcb_t * prev_process = current_running;
+	list_head * queue;
 	if(current_running->status == TASK_RUNNING)
 	{
 		current_running->status = TASK_READY;
@@ -45,13 +48,32 @@ void do_scheduler(void)
 			addToQueue(&current_running->list, &ready_queue);
 		}
 	}
-	
 
-	current_running = (pcb_t *)getProcess();
+	current_running->current_core_id = NO_CORE;	
+
+	// 根据掩码选择下一个进程
+	queue = &ready_queue;
+	//current_running = (pcb_t *)getReadyProcess(queue);
+	while(1)
+	{
+		current_running = (pcb_t *)getReadyProcess(queue);
+		printl("0x%x core: %d pid: %d\n",current_running,current_cpuid,process_id[current_cpuid]);
+		if(current_running->core_mask & (1 << current_cpuid))
+			break;
+		queue = queue->next;
+		if(queue->next == &ready_queue)
+		{
+			current_running = &pid0_pcb[current_cpuid];
+			break;
+		}
+	}
+
+	current_running->current_core_id = current_cpuid;
+
 	process_id[current_cpuid] = current_running->pid;
 	current_running->status = TASK_RUNNING;
 	if(process_id[current_cpuid] != 0)
-		deleteNode(ready_queue.next);
+		deleteNode(&current_running->list);
 
 	bios_set_timer(get_ticks() + TIMER_INTERVAL);	// set timer interrupt
 
@@ -116,11 +138,18 @@ void do_process_show()
 			printk("[%d] PID: %d ",j,pcb[i].pid);
 			j++;
 			if(pcb[i].status == TASK_RUNNING)
-				printk("STATUS: %s\n","TASK_RUNNING");
+				printk("STATUS: %s ","TASK_RUNNING");
 			else if(pcb[i].status == TASK_BLOCKED)
-				printk("STATUS: %s\n","TASK_BLOCKED");
+				printk("STATUS: %s ","TASK_BLOCKED");
 			else if(pcb[i].status == TASK_READY)
-				printk("STATUS: %s\n","TASK_READY");
+				printk("STATUS: %s ","TASK_READY");
+
+			printk("MASK: 0x%x",pcb[i].core_mask);
+
+			if(pcb[i].current_core_id == NO_CORE)
+				printk("\n");
+			else
+				printk(" Core: %d\n",pcb[i].current_core_id);
 		}
 	}
 	if(has_process == 0)
@@ -149,6 +178,7 @@ pid_t do_exec(char *name, int argc, char **argv)
 				return 0;
 			}			
 			addToQueue(&pcb[i].list,&ready_queue);
+			pcb[i].core_mask = current_running->core_mask;
 			break;
 		}
 	}
@@ -181,10 +211,13 @@ int do_kill(pid_t pid)
 
 int do_waitpid(pid_t pid)
 {
-	if(pcb[pid - 1].status != TASK_EXITED)
+	if(pid > 0 && pid <= NUM_MAX_TASK)
 	{
-		do_block(&current_running->list, &pcb[pid - 1].wait_list);
-		return pid;
+		if(pcb[pid - 1].status != TASK_EXITED)
+		{
+			do_block(&current_running->list, &pcb[pid - 1].wait_list);
+			return pid;
+		}
 	}
 	return 0;
 }

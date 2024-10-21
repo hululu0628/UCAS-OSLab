@@ -34,10 +34,10 @@ void allocReadyProcess()
 	}
 }
 
-ptr_t getProcess()
+ptr_t getReadyProcess(list_head * queue)
 {
-	if(ready_queue.next != &ready_queue)
-		return (ptr_t)FIND_PCB(ready_queue.next);
+	if(queue->next != queue)
+		return (ptr_t)FIND_PCB(queue->next);
 	else
 		return (ptr_t)(&pid0_pcb[get_current_cpu_id()]);
 }

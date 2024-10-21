@@ -9,6 +9,7 @@
 #define SYSCALL_PS 5
 #define SYSCALL_GETPID 6
 #define SYSCALL_YIELD 7
+#define SYSCALL_TASKSET	8	// for p3-task4
 #define SYSCALL_WRITE 20
 #define SYSCALL_READCH 21
 #define SYSCALL_CURSOR 22

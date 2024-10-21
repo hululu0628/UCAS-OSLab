@@ -43,7 +43,8 @@ enum cmdtype
 	PS,
 	EXEC,
 	KILL,
-	CLEAR
+	CLEAR,
+	TASKSET
 };
 
 typedef struct CMD
@@ -94,7 +95,11 @@ int main(void)
 				if(cmd.argc != 0)
 					printf("ERROR\n");
 				else
+				{
 					sys_clear();
+					sys_move_cursor(0, SHELL_BEGIN);
+					printf("------------------- COMMAND -------------------\n");
+				}
 				break;
 			case EXEC:
 				if(cmd.argc == 0)
@@ -109,6 +114,23 @@ int main(void)
 					{
 						int pid;
 						pid = sys_exec(args[0], cmd.argc, (char **)cmd.argv);
+						sys_waitpid(pid);
+					}
+				}
+				break;
+			case TASKSET:
+				if(cmd.argc < 2)
+					printf("ERROR\n");
+				else
+				{
+					if(cmd.argc != 1 && strcmp(args[cmd.argc - 1],"&") == 0)
+					{
+						sys_taskset(cmd.argc - 1, (char **)cmd.argv);
+					}
+					else
+					{
+						int pid;
+						pid = sys_taskset(cmd.argc, (char **)cmd.argv);
 						sys_waitpid(pid);
 					}
 				}
@@ -143,6 +165,24 @@ void gettoken(void)
 	start = 0;
 	end = strchr(cmdstr,' ');
 	cmd.argc = 0;
+
+	// get command name
+	strncpy(token, &cmdstr[start], end - start);
+	token[end - start] = '\0';
+	if(strcmp(token,"ps") == 0)
+		cmd.type = PS;
+	else if(strcmp(token,"exec") == 0)
+		cmd.type = EXEC;
+	else if(strcmp(token,"kill") == 0)
+		cmd.type = KILL;
+	else if(strcmp(token,"clear") == 0)
+		cmd.type = CLEAR;
+	else if(strcmp(token,"taskset") == 0)
+		cmd.type = TASKSET;
+	else
+		cmd.type = UNKNOWN;
+
+	// get parameters
 	if(cmdstr[end] != '\0')
 	{
 		strncpy(token, &cmdstr[start], end - start);
@@ -155,6 +195,8 @@ void gettoken(void)
 			cmd.type = KILL;
 		else if(strcmp(token,"clear") == 0)
 			cmd.type = CLEAR;
+		else if(strcmp(token,"taskset") == 0)
+			cmd.type = TASKSET;
 		else
 			cmd.type = UNKNOWN;
 
@@ -185,20 +227,5 @@ void gettoken(void)
 				}
 			}
 		}
-	}
-	else
-	{
-		strcpy(token, cmdstr);
-		if(strcmp(token,"ps") == 0)
-			cmd.type = PS;
-		else if(strcmp(token,"exec") == 0)
-			cmd.type = EXEC;
-		else if(strcmp(token,"kill") == 0)
-			cmd.type = KILL;
-		else if(strcmp(token,"clear") == 0)
-			cmd.type = CLEAR;
-		else
-			cmd.type = UNKNOWN;
-		cmd.argc = 0;
 	}
 }

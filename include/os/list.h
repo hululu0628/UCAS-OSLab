@@ -63,7 +63,7 @@ void deleteNode(list_node_t * listnode);
 void allocReadyProcess();
 
 // get the next process from the head of ready queue
-ptr_t getProcess();
+ptr_t getReadyProcess(list_head * queue);
 
 // free queue
 void freeQueueToReady(list_head * head);
