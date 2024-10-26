@@ -26,9 +26,9 @@ extern void ret_from_trap();
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
 
-char buf[50];
+// char buf[50];
 
-int tasknum;
+// int tasknum;
 
 
 static void init_jmptab(void)
@@ -63,7 +63,7 @@ static void init_task_info(void)
 	task_info_t * taskinfo_ptr = (task_info_t *)0x50200200;
 	for(int i = 0; i < TASK_MAXNUM; i++, taskinfo_ptr++)
 		tasks[i] = *taskinfo_ptr;
-	tasknum = *((int *)0x502001fe);
+	// tasknum = *((int *)0x502001fe);
 
 }
 
@@ -166,8 +166,6 @@ static void init_pcb(void)
 		pcb[i].wait_list.next = &pcb[i].wait_list;
 		pcb[i].wait_list.prev = &pcb[i].wait_list;
 		pcb[i].status = TASK_EXITED;			// useless?
-		pcb[i].mlock_idx = -1;
-		pcb[i].mbox_idx = -1;
 	}
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */

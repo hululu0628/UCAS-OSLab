@@ -32,6 +32,7 @@
 #include <type.h>
 #include <os/list.h>
 #include <os/smp.h>
+#include <os/lock.h>
 
 #define NUM_MAX_TASK 16
 
@@ -100,8 +101,8 @@ typedef struct pcb
 	uint64_t wakeup_time;
 
 	/* mutex and mailbox index */
-	int mlock_idx;
-	int mbox_idx;
+	int mlock_table[LOCK_NUM];
+	int mbox_table[MBOX_NUM];
 
 } pcb_t;
 

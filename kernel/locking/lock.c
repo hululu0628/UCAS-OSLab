@@ -15,7 +15,7 @@ void init_ipc(void)
 	init_locks();
 	init_barriers();
 	init_conditions();
-	init_mbox();
+	init_mailboxes();
 }
 
 
@@ -34,6 +34,7 @@ void init_locks(void)
 void spin_lock_init(spin_lock_t *lock)
 {
 	/* TODO: [p2-task2] initialize spin lock */
+	lock->status = UNLOCKED;
 }
 
 int spin_lock_try_acquire(spin_lock_t *lock)
@@ -61,6 +62,13 @@ int do_mutex_lock_init(int key)
 	return key % LOCK_NUM;
 }
 
+void mutex_acquire(mutex_lock_t *lock)
+{
+	while(lock->lock.status != UNLOCKED)
+		do_block(&current_running->list, &lock->block_queue);
+	lock->lock.status = LOCKED;
+}
+
 void do_mutex_lock_acquire(int mlock_idx)
 {
 	/* TODO: [p2-task2] acquire mutex lock */
@@ -70,20 +78,23 @@ void do_mutex_lock_acquire(int mlock_idx)
 	// The interrupt is disabled gloablly in S-mode, but still using atomic operation
 	// The process tries to acquire the lock until it succeed
 	// For details, see README.md
-	while(mlocks[mlock_idx].lock.status != UNLOCKED)
-		do_block(&current_running->list, &mlocks[mlock_idx].block_queue);
-	mlocks[mlock_idx].lock.status = LOCKED;
-	current_running->mlock_idx = mlock_idx;
+	mutex_acquire(&mlocks[mlock_idx]);
+	current_running->mlock_table[mlock_idx] = 1;
+}
+
+void mutex_release(mutex_lock_t *lock)
+{
+	lock->lock.status = UNLOCKED;
+	if(&lock->block_queue != lock->block_queue.next)	// queue is not empty
+		do_unblock(lock->block_queue.next);
 }
 
 void do_mutex_lock_release(int mlock_idx)
 {
 	/* TODO: [p2-task2] release mutex lock */
 
-	mlocks[mlock_idx].lock.status = UNLOCKED;
-	if(&mlocks[mlock_idx].block_queue != mlocks[mlock_idx].block_queue.next)	// queue is not empty
-		do_unblock(mlocks[mlock_idx].block_queue.next);
-	current_running->mlock_idx = -1;
+	mutex_release(&mlocks[mlock_idx]);
+	current_running->mlock_table[mlock_idx] = 0;
 }
 
 
@@ -137,40 +148,45 @@ void init_conditions(void)
 int do_condition_init(int key)
 {
 	conditions[key % CONDITION_NUM].key = key;
-	conditions[key % CONDITION_NUM].status = false;
 	return key % CONDITION_NUM;
+}
+
+void condition_wait(condition_t *cond, mutex_lock_t *lock)
+{
+	mutex_release(lock);
+	do_block(&current_running->list, &cond->block_queue);
+	mutex_acquire(lock);
 }
 
 void do_condition_wait(int cond_idx,int mutex_idx)
 {
-	if(conditions[cond_idx].status == false)
+	condition_wait(&conditions[cond_idx], &mlocks[mutex_idx]);
+}
+
+void condition_signal(condition_t *cond)
+{
+	if(cond->block_queue.next != &cond->block_queue)
 	{
-		do_mutex_lock_release(mutex_idx);
-		do_block(&current_running->list,&conditions[cond_idx].block_queue);
-		do_mutex_lock_acquire(mutex_idx);
+		do_unblock(cond->block_queue.next);
 	}
-	else
-		conditions[cond_idx].status = false;
 }
 
 void do_condition_signal(int cond_idx)
 {
-	if(conditions[cond_idx].block_queue.next != &conditions[cond_idx].block_queue)
+	condition_signal(&conditions[cond_idx]);
+}
+
+void condition_broadcast(condition_t *cond)
+{
+	if(cond->block_queue.next != &cond->block_queue)
 	{
-		do_unblock(conditions[cond_idx].block_queue.next);
+		freeQueueToReady(&cond->block_queue);
 	}
-	else
-		conditions[cond_idx].status = true;
 }
 
 void do_condition_broadcast(int cond_idx)
 {
-	if(conditions[cond_idx].block_queue.next != &conditions[cond_idx].block_queue)
-	{
-		freeQueueToReady(&conditions[cond_idx].block_queue);
-	}
-	else
-		conditions[cond_idx].status = true;
+	condition_broadcast(&conditions[cond_idx]);
 }
 
 void do_condition_destroy(int cond_idx)
@@ -179,14 +195,12 @@ void do_condition_destroy(int cond_idx)
 }
 
 
-void init_mbox()
+void init_mailboxes()
 {
 	for(int i = 0; i < MBOX_NUM; i++)
 	{
-		mailboxes[i].rev_block_queue.next = &mailboxes[i].rev_block_queue;
-		mailboxes[i].rev_block_queue.prev = &mailboxes[i].rev_block_queue;
-		mailboxes[i].send_block_queue.next = &mailboxes[i].send_block_queue;
-		mailboxes[i].send_block_queue.prev = &mailboxes[i].send_block_queue;
+		mailboxes[i].condition.block_queue.next = &mailboxes[i].condition.block_queue;
+		mailboxes[i].condition.block_queue.prev = &mailboxes[i].condition.block_queue;
 		mailboxes[i].remain_length = MAX_MBOX_LENGTH;
 	}
 }
@@ -198,7 +212,7 @@ int do_mbox_open(char *name)
 		if(mailboxes[i].name[0] != '\0' && strcmp(mailboxes[i].name,name) == 0)
 		{
 			mailboxes[i].ref_cnt++;
-			current_running->mbox_idx = i;
+			current_running->mbox_table[i] = 1;
 			return i;
 		}
 	}
@@ -208,7 +222,7 @@ int do_mbox_open(char *name)
 		{
 			strcpy(mailboxes[i].name, name);
 			mailboxes[i].ref_cnt++;
-			current_running->mbox_idx = i;
+			current_running->mbox_table[i] = 1;
 			return i;
 		}
 	}
@@ -225,7 +239,7 @@ void do_mbox_close(int mbox_idx)
 		mailboxes[mbox_idx].head = 0;
 		mailboxes[mbox_idx].tail = 0;
 		mailboxes[mbox_idx].remain_length = MAX_MBOX_LENGTH;
-		current_running->mbox_idx = -1;
+		current_running->mbox_table[mbox_idx] = 0;
 	}
 	else if(mailboxes[mbox_idx].ref_cnt < 0)
 	{
@@ -264,18 +278,20 @@ int do_mbox_send(int mbox_idx, void * msg, int msg_length)
 	int blocked = 0;
 	while(1)
 	{
+		mutex_acquire(&mailboxes[mbox_idx].mutex);
 		if(msg_length > mailboxes[mbox_idx].remain_length)
 		{
-			do_block(&current_running->list, &mailboxes[mbox_idx].send_block_queue);
+			condition_wait(&mailboxes[mbox_idx].condition, &mailboxes[mbox_idx].mutex);
 			blocked += 1;
 		}
 		else
 		{
 			send_msg(mbox_idx,msg,msg_length);
-			if(mailboxes[mbox_idx].rev_block_queue.next != &mailboxes[mbox_idx].rev_block_queue)
-				freeQueueToReady(&mailboxes[mbox_idx].rev_block_queue);
+			condition_broadcast(&mailboxes[mbox_idx].condition);
+			mutex_release(&mailboxes[mbox_idx].mutex);
 			return blocked;
 		}
+		mutex_release(&mailboxes[mbox_idx].mutex);
 	}
 }
 
@@ -284,17 +300,19 @@ int do_mbox_recv(int mbox_idx, void *msg, int msg_length)
 	int blocked = 0;
 	while(1)
 	{
+		mutex_acquire(&mailboxes[mbox_idx].mutex);
 		if(msg_length > MAX_MBOX_LENGTH - mailboxes[mbox_idx].remain_length)
 		{
-			do_block(&current_running->list, &mailboxes[mbox_idx].rev_block_queue);
+			condition_wait(&mailboxes[mbox_idx].condition, &mailboxes[mbox_idx].mutex);
 			blocked += 1;
 		}
 		else
 		{
 			recv_msg(mbox_idx,msg,msg_length);
-			if(mailboxes[mbox_idx].send_block_queue.next != &mailboxes[mbox_idx].send_block_queue)
-				freeQueueToReady(&mailboxes[mbox_idx].send_block_queue);
+			condition_broadcast(&mailboxes[mbox_idx].condition);
+			mutex_release(&mailboxes[mbox_idx].mutex);
 			return blocked;
 		}
+		mutex_release(&mailboxes[mbox_idx].mutex);
 	}
 }

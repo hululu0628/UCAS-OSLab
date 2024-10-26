@@ -37,7 +37,6 @@ static void vt100_hidden_cursor()
 
 /* write a char */
 // 屏幕输出会出现神秘问题？
-// 已解决：分配的栈空间太小
 void screen_putchar(char ch)
 {
 	screen_write_ch(ch);

@@ -13,9 +13,9 @@ pcb_t pcb[NUM_MAX_TASK];
 const ptr_t pid0_stack[NR_CPUS] = {INIT_KERNEL_STACK - PAGE_SIZE, INIT_KERNEL_STACK + PAGE_SIZE};
 pcb_t pid0_pcb[NR_CPUS] = {
 	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK - PAGE_SIZE,.user_sp = INIT_KERNEL_STACK - PAGE_SIZE,
-	 .core_mask = MASK_ZERO,.mlock_idx = -1,.mbox_idx = -1},
+	 .core_mask = MASK_ZERO},
 	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK + PAGE_SIZE,.user_sp = INIT_KERNEL_STACK + PAGE_SIZE,
-	 .core_mask = MASK_ONE,.mlock_idx = -1,.mbox_idx = -1}
+	 .core_mask = MASK_ONE}
 };
 
 LIST_HEAD(ready_queue);
@@ -166,7 +166,7 @@ pid_t do_getpid()
 pid_t do_exec(char *name, int argc, char **argv)
 {
 	int i;
-	pid_t pid = 0;
+	pid_t pid = -1;
 	for(i = 0; i < NUM_MAX_TASK; i++)
 	{
 		if(pcb[i].status == TASK_EXITED)
@@ -175,14 +175,14 @@ pid_t do_exec(char *name, int argc, char **argv)
 			if(add_new_task(name,argc,argv,pid) == -1)
 			{
 				printl("Error: In function do_exec, cannot load task called %s\n",name);
-				return 0;
-			}			
+				return -1;
+			}
 			addToQueue(&pcb[i].list,&ready_queue);
 			pcb[i].core_mask = current_running->core_mask;
 			break;
 		}
 	}
-	return pid;
+	return pid;	// 修改：错误返回-1
 }
 
 // 回收内存
@@ -200,11 +200,17 @@ int do_kill(pid_t pid)
 		deleteNode(&pcb[pid - 1].list);
 		pcb[pid - 1].status = TASK_EXITED;
 		freeQueueToReady(&pcb[pid - 1].wait_list);
-		if(pcb[pid-1].mlock_idx != -1)
-			do_mutex_lock_release(pcb[pid-1].mlock_idx);
-		if(pcb[pid-1].mbox_idx != -1)
-			do_mbox_close(pcb[pid-1].mbox_idx);
-		return 1;
+		// 多把锁
+		for(int i = 0; i < LOCK_NUM; i++)
+		{
+			if(pcb[pid - 1].mlock_table[i] == 1)
+				do_mutex_lock_release(i);
+		}
+		for(int i = 0; i < MBOX_NUM; i++)
+		{
+			if(pcb[pid - 1].mbox_table[i] == 1)
+				do_mbox_close(i);
+		}
 	}
 	return 0;
 }

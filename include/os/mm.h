@@ -45,4 +45,9 @@ extern ptr_t allocUserPage(int numPage);
 extern ptr_t allocKernelStack(int numPage);
 extern ptr_t allocUserStack(int numPage);
 
+
+
+extern ptr_t kalloc(int byte_num, int flags);
+extern int kfree(ptr_t p);
+
 #endif /* MM_H */

@@ -33,6 +33,7 @@
 #include <ctype.h>
 
 #define SHELL_BEGIN 20
+#define SHELL_END 50
 
 #define MAX_ARGS 10
 #define ARG_NAME 20

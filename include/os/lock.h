@@ -47,6 +47,7 @@ typedef struct mutex_lock
 	spin_lock_t lock;
 	list_head block_queue;
 	int key;
+	int pid;
 } mutex_lock_t;
 
 void init_locks(void);
@@ -56,9 +57,13 @@ int spin_lock_try_acquire(spin_lock_t *lock);
 void spin_lock_acquire(spin_lock_t *lock);
 void spin_lock_release(spin_lock_t *lock);
 
+// 为什么使用时参数是一个index，而不是指向结构体的指针
 int do_mutex_lock_init(int key);
 void do_mutex_lock_acquire(int mlock_idx);	// atomic
 void do_mutex_lock_release(int mlock_idx);	// atomic
+
+void mutex_acquire(mutex_lock_t * lock);	
+void mutex_release(mutex_lock_t * lock);
 
 /************************************************************/
 
@@ -86,7 +91,6 @@ typedef struct condition
 	// TODO [P3-TASK2 condition]
 	list_head block_queue;
 	int key;
-	bool status;
 } condition_t;
 
 void init_conditions(void);
@@ -95,6 +99,11 @@ void do_condition_wait(int cond_idx, int mutex_idx);	// atomic
 void do_condition_signal(int cond_idx);			// atomic
 void do_condition_broadcast(int cond_idx);		// atomic
 void do_condition_destroy(int cond_idx);
+
+void condition_wait(condition_t * cond, mutex_lock_t * lock);
+void condition_signal(condition_t * cond);
+void condition_broadcast(condition_t * cond);
+
 
 typedef struct semaphore
 {
@@ -120,15 +129,14 @@ typedef struct mailbox
     	// TODO [P3-TASK2 mailbox]
 	char name[MAX_MBOX_NAME];
 	int ref_cnt;
-	list_head send_block_queue;
-	list_head rev_block_queue;
+	mutex_lock_t mutex;	// 如果用条件变量实现信箱，原先的处理函数不太好用，
+	condition_t condition;
 	uint8_t msg_array[MAX_MBOX_LENGTH];
 	int head,tail;
 	int remain_length;
 } mailbox_t;
 
-
-void init_mbox();
+void init_mailboxes();
 int do_mbox_open(char *name);
 void do_mbox_close(int mbox_idx);
 int do_mbox_send(int mbox_idx, void * msg, int msg_length);
