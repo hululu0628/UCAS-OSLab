@@ -199,6 +199,8 @@ void init_mailboxes()
 {
 	for(int i = 0; i < MBOX_NUM; i++)
 	{
+		mailboxes[i].mutex.block_queue.next = &mailboxes[i].mutex.block_queue;
+		mailboxes[i].mutex.block_queue.prev = &mailboxes[i].mutex.block_queue;
 		mailboxes[i].condition.block_queue.next = &mailboxes[i].condition.block_queue;
 		mailboxes[i].condition.block_queue.prev = &mailboxes[i].condition.block_queue;
 		mailboxes[i].remain_length = MAX_MBOX_LENGTH;
