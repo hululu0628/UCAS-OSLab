@@ -46,7 +46,8 @@ int main()
     sys_sleep(1);
     for (;;)
     {
-        len = (rand() % ((MAX_MBOX_LENGTH - sizeof(MsgHeader_t))/2)) + 1;
+        //len = (rand() % ((MAX_MBOX_LENGTH - sizeof(MsgHeader_t))/2)) + 1;
+	len = (MAX_MBOX_LENGTH - sizeof(MsgHeader_t)) / 2;
         generateRandomString(strBuffer, len);
         blocked += clientSendMsg(handle_mq, strBuffer, len);
         bytes += len;

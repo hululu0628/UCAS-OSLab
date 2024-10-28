@@ -166,12 +166,13 @@ static void init_pcb(void)
 		pcb[i].wait_list.next = &pcb[i].wait_list;
 		pcb[i].wait_list.prev = &pcb[i].wait_list;
 		pcb[i].status = TASK_EXITED;			// useless?
+		pcb[i].current_core_id = NO_CORE;
 	}
 
 	/* TODO: [p2-task1] remember to initialize 'current_running' */
 
 	pid0_pcb[current_cpuid].status = TASK_RUNNING;
-	pid0_pcb[current_cpuid].current_core_id = MASK_ZERO;
+	pid0_pcb[current_cpuid].current_core_id = CORE_ZERO;
 	current_running = &pid0_pcb[current_cpuid];		// current running is kernel
 	process_id[current_cpuid] = pid0_pcb[current_cpuid].pid;
 

@@ -16,7 +16,7 @@ void smp_init()
 	// init tp
 	int current_cpu_id = get_current_cpu_id();
 	pid0_pcb[current_cpu_id].status = TASK_RUNNING;
-	pid0_pcb[current_cpu_id].current_core_id = MASK_ONE;
+	pid0_pcb[current_cpu_id].current_core_id = CORE_ONE;
 	current_running = &pid0_pcb[current_cpu_id];		// current running is kernel
 	process_id[current_cpu_id] = pid0_pcb[current_cpu_id].pid;
 	// init stvec
