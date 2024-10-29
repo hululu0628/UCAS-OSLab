@@ -44,28 +44,6 @@ int main(int argc, char *argv[])
 	sys_move_cursor(0, print_location);
 	printf("[Server] server started");
 	sys_sleep(1);
-
-        blockedCount += sys_mbox_recv(handle_mq, &header, sizeof(MsgHeader_t));
-        blockedCount += sys_mbox_recv(handle_mq, msgBuffer, header.length);
-
-        uint32_t checksum = adler32(msgBuffer, header.length);
-        if (checksum == header.checksum) {
-          	correctRecvBytes += header.length;
-        } else {
-          	errorRecvBytes += header.length;
-        }
-
-        sys_move_cursor(0, print_location);
-        printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, "
-               "errorBytes: %ld)",
-               header.sender, blockedCount, correctRecvBytes, errorRecvBytes);
-
-        if (clientInitReq(msgBuffer, header.length)) {
-          	sys_mbox_send(handle_posmq, &clientPos, sizeof(int));
-          	++clientPos;
-        }
-
-        sys_sleep(1);
 	start = sys_get_tick();
 
         for (;;)
