@@ -29,33 +29,40 @@ static int clientSendMsg(int mq, const char* content, int length)
 int main()
 {
 #ifndef S_CORE
-    // open two mailboxs
-    int handle_mq = sys_mbox_open(STR_MBOX);
-    int handle_posmq = sys_mbox_open(POS_MBOX);
-    int len = 0;
-    char strBuffer[MAX_MBOX_LENGTH - sizeof(MsgHeader_t)];
-    clientSendMsg(handle_mq, initReq, initReqLen);
-    int position = 0;
-    sys_mbox_recv(handle_posmq, &position, sizeof(int));	// ???
-    int blocked = 0;
-    //int64_t bytes = 0;
-    int64_t bytes = initReqLen;
+	// open two mailboxs
+	int handle_mq = sys_mbox_open(STR_MBOX);
+	int handle_posmq = sys_mbox_open(POS_MBOX);
+	int len = 0;
+	char strBuffer[MAX_MBOX_LENGTH - sizeof(MsgHeader_t)];
+	clientSendMsg(handle_mq, initReq, initReqLen);
+	int position = 0;
+	sys_mbox_recv(handle_posmq, &position, sizeof(int));	// ???
+	int blocked = 0;
+	//int64_t bytes = 0;
+	int64_t bytes = initReqLen;
 
-    sys_move_cursor(0, position);
-    printf("[Client] server started");
-    sys_sleep(1);
-    for (;;)
-    {
-        //len = (rand() % ((MAX_MBOX_LENGTH - sizeof(MsgHeader_t))/2)) + 1;
-	len = (MAX_MBOX_LENGTH - sizeof(MsgHeader_t)) / 2;
-        generateRandomString(strBuffer, len);
-        blocked += clientSendMsg(handle_mq, strBuffer, len);
-        bytes += len;
+	sys_move_cursor(0, position);
+	printf("[Client] server started");
+	sys_sleep(1);
+	len = 30;
+	int i = 0;
+	for (;;)
+	{
+		//len = (rand() % ((MAX_MBOX_LENGTH - sizeof(MsgHeader_t))/2)) + 1;
+		generateRandomString(strBuffer, len);
+		blocked += clientSendMsg(handle_mq, strBuffer, len);
+		bytes += len;
 
-        sys_move_cursor(0, position);
-        printf("[Client] send bytes: %ld, blocked: %d", bytes, blocked);
-        sys_sleep(1);
-    }
+		i++;
+
+		if(i == 1000)
+		{
+			sys_move_cursor(0, position);
+			printf("[Client] send bytes: %ld, blocked: %d", bytes, blocked);
+			i = 0;
+		}
+		// sys_sleep(1);
+	}
 #endif
 
     return 0;

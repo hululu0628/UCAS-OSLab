@@ -44,13 +44,17 @@ int main(int argc, char *argv[])
 	sys_move_cursor(0, print_location);
 	printf("[Server] server started");
 	sys_sleep(1);
-	start = sys_get_tick();
+
+	int i = 0;
+	unsigned long speed;
 
         for (;;)
 	{
+		if(i == 0)
+			start = sys_get_tick();
+
 		blockedCount += sys_mbox_recv(handle_mq, &header, sizeof(MsgHeader_t));
 		blockedCount += sys_mbox_recv(handle_mq, msgBuffer, header.length);
-		end = sys_get_tick();
 
 		uint32_t checksum = adler32(msgBuffer, header.length);
 		if (checksum == header.checksum) {
@@ -58,17 +62,22 @@ int main(int argc, char *argv[])
 		} else {
 			errorRecvBytes += header.length;
 		}
-
-		sys_move_cursor(0, print_location);
-		printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, errorBytes: %ld)\n%ld",
-		header.sender, blockedCount, correctRecvBytes, errorRecvBytes, (correctRecvBytes * time_base) / (end - start));
+		i++;
+		if(i == 1000)
+		{
+			speed = (30 * i * time_base) / (sys_get_tick() - start);
+			sys_move_cursor(0, print_location);
+			printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, errorBytes: %ld) %ld B/s",
+			header.sender, blockedCount, correctRecvBytes, errorRecvBytes,speed);
+			i = 0;
+		}
 
 		if (clientInitReq(msgBuffer, header.length)) {
 			sys_mbox_send(handle_posmq, &clientPos, sizeof(int));
 			++clientPos;
 		}
 
-		sys_sleep(1);
+		//sys_sleep(1);
 	}
 #endif
 

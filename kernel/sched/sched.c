@@ -57,7 +57,7 @@ void do_scheduler(void)
 	while(1)
 	{
 		current_running = (pcb_t *)getReadyProcess(queue);
-		printl("0x%x core: %d pid: %d\n",current_running,current_cpuid,process_id[current_cpuid]);
+		// printl("0x%x core: %d pid: %d\n",current_running,current_cpuid,process_id[current_cpuid]);
 		if(current_running->core_mask & (1 << current_cpuid))
 			break;
 		queue = queue->next;

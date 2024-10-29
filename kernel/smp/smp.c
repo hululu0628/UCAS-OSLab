@@ -43,6 +43,17 @@ void unlock_kernel()
 	atomic_swap(UNLOCKED, (ptr_t)&slock.status);
 }
 
+void lock_pcb()
+{
+	while(atomic_swap(LOCKED, (ptr_t)&slock.status) == LOCKED)
+		;
+}
+
+void unlock_pcb()
+{
+	atomic_swap(UNLOCKED, (ptr_t)&slock.status);
+}
+
 
 // 输入不规范没有过多检查
 int do_taskset(int argc, char **argv)
