@@ -55,7 +55,7 @@ int main()
 
 		i++;
 
-		if(i == 1000)
+		if(i == 10000)
 		{
 			sys_move_cursor(0, position);
 			printf("[Client] send bytes: %ld, blocked: %d", bytes, blocked);

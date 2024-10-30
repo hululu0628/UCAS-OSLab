@@ -63,9 +63,9 @@ int main(int argc, char *argv[])
 			errorRecvBytes += header.length;
 		}
 		i++;
-		if(i == 1000)
+		if(i == 10000)
 		{
-			speed = (30 * i * time_base) / (sys_get_tick() - start);
+			speed = (15 * i * time_base) / (sys_get_tick() - start);
 			sys_move_cursor(0, print_location);
 			printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, errorBytes: %ld) %ld B/s",
 			header.sender, blockedCount, correctRecvBytes, errorRecvBytes,speed);
