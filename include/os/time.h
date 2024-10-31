@@ -30,7 +30,7 @@
 
 #include <type.h>
 
-#define TIMER_INTERVAL 10000
+#define TIMER_INTERVAL 200
 
 // #define TIME_BASE = 10000000
 

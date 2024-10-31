@@ -66,8 +66,6 @@ int main(int argc, char *argv[])
 		if((end - start) / time_base > 2)
 		{
 			sys_move_cursor(0, print_location);
-			printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, errorBytes: %ld)\n",
-			header.sender, blockedCount, correctRecvBytes, errorRecvBytes);
 			printf("  %d    B/s                          ",(len * time_base) / (end - start));
 			len = 0;
 			start = sys_get_tick();
