@@ -44,23 +44,15 @@ int main()
 	sys_move_cursor(0, position);
 	printf("[Client] server started");
 	sys_sleep(1);
-	len = 30;
-	int i = 0;
+	len = 15;
 	for (;;)
 	{
 		//len = (rand() % ((MAX_MBOX_LENGTH - sizeof(MsgHeader_t))/2)) + 1;
 		generateRandomString(strBuffer, len);
 		blocked += clientSendMsg(handle_mq, strBuffer, len);
 		bytes += len;
-
-		i++;
-
-		if(i == 10000)
-		{
-			sys_move_cursor(0, position);
-			printf("[Client] send bytes: %ld, blocked: %d", bytes, blocked);
-			i = 0;
-		}
+		sys_move_cursor(0, position);
+		//printf("[Client] send bytes: %ld, blocked: %d", bytes, blocked);
 		// sys_sleep(1);
 	}
 #endif

@@ -45,14 +45,11 @@ int main(int argc, char *argv[])
 	printf("[Server] server started");
 	sys_sleep(1);
 
-	int i = 0;
-	unsigned long speed;
+	start = sys_get_tick();
+	unsigned long len = 0;
 
         for (;;)
 	{
-		if(i == 0)
-			start = sys_get_tick();
-
 		blockedCount += sys_mbox_recv(handle_mq, &header, sizeof(MsgHeader_t));
 		blockedCount += sys_mbox_recv(handle_mq, msgBuffer, header.length);
 
@@ -62,14 +59,18 @@ int main(int argc, char *argv[])
 		} else {
 			errorRecvBytes += header.length;
 		}
-		i++;
-		if(i == 10000)
+		len += header.length;
+
+		end = sys_get_tick();
+
+		if((end - start) / time_base > 2)
 		{
-			speed = (15 * i * time_base) / (sys_get_tick() - start);
 			sys_move_cursor(0, print_location);
-			printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, errorBytes: %ld) %ld B/s",
-			header.sender, blockedCount, correctRecvBytes, errorRecvBytes,speed);
-			i = 0;
+			printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, errorBytes: %ld)\n",
+			header.sender, blockedCount, correctRecvBytes, errorRecvBytes);
+			printf("  %d    B/s                          ",(len * time_base) / (end - start));
+			len = 0;
+			start = sys_get_tick();
 		}
 
 		if (clientInitReq(msgBuffer, header.length)) {
