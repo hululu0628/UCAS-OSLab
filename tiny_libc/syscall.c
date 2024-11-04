@@ -263,4 +263,14 @@ int sys_taskset(int argc, char **argv)
 {
 	return invoke_syscall(SYSCALL_TASKSET, (long)argc, (long)argv, 0, 0, 0);
 }
+
+void* sys_shmpageget(int key)
+{
+    /* TODO: [p4-task4] call invoke_syscall to implement sys_shmpageget */
+}
+
+void sys_shmpagedt(void *addr)
+{
+    /* TODO: [p4-task4] call invoke_syscall to implement sys_shmpagedt */
+}
 /************************************************************/

@@ -3,8 +3,9 @@
 
 #include <type.h>
 #include <common.h>
+#include <pgtable.h>
 
-#define KERNEL_JMPTAB_BASE 0x51ffff00
+#define KERNEL_JMPTAB_BASE 0xffffffc051ffff00
 typedef enum {
     CONSOLE_PUTSTR,
     CONSOLE_PUTCHAR,

@@ -7,7 +7,7 @@
 
 
 typedef int32_t pid_t;
-
+typedef pid_t pthread_t;
 
 void sys_sleep(uint32_t time);
 void sys_yield(void);
@@ -63,6 +63,11 @@ int sys_mbox_recv(int mbox_idx, void *msg, int msg_length);
 // p3-task4
 int sys_taskset(int argc, char **argv);
 
+
+/* TODO: [P4-task5] shmpageget/dt */
+/* shmpageget/dt */
+void* sys_shmpageget(int key);
+void sys_shmpagedt(void *addr);
 /************************************************************/
 
 #endif
