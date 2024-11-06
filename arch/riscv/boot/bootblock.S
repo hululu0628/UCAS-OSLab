@@ -4,7 +4,7 @@
 // os size location (os_size could be sectors [p1-task3] or bytes [p1-task4])
 .equ os_size_loc, 0x502001fc
 // task num location(add in p1-t4)
-.equ taskinfo_size_loc, 0x502001fe
+.equ task_size_loc, 0x502001fe
 // taskinfo offset(add in p1-t4)
 .equ taskinfo_sec_offset_loc, 0x502001f8
 // number of taskinfo sector(add in p3)
