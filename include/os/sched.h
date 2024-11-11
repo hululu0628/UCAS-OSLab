@@ -33,6 +33,7 @@
 #include <os/list.h>
 #include <os/smp.h>
 #include <os/lock.h>
+#include <pgtable.h>
 
 #define NUM_MAX_TASK 16
 
@@ -90,6 +91,9 @@ typedef struct pcb
 	/* BLOCK | READY | RUNNING */
 	task_status_t status;
 
+	PTE * pgdir;
+
+	/* for taskset */
 	core_mask_t core_mask;
 	core_id_t current_core_id;
 

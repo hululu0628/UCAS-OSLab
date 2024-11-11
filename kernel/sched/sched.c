@@ -1,3 +1,4 @@
+#include <pgtable.h>
 #include <os/kernel.h>
 #include <os/list.h>
 #include <os/lock.h>
@@ -12,10 +13,10 @@
 pcb_t pcb[NUM_MAX_TASK];
 const ptr_t pid0_stack[NR_CPUS] = {INIT_KERNEL_STACK - PAGE_SIZE, INIT_KERNEL_STACK + PAGE_SIZE};
 pcb_t pid0_pcb[NR_CPUS] = {
-	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK - PAGE_SIZE,.user_sp = INIT_KERNEL_STACK - PAGE_SIZE,
-	 .core_mask = MASK_ZERO},
-	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK + PAGE_SIZE,.user_sp = INIT_KERNEL_STACK + PAGE_SIZE,
-	 .core_mask = MASK_ONE}
+	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK + 2 * PAGE_SIZE,.user_sp = INIT_KERNEL_STACK + 2 * PAGE_SIZE,
+	 .core_mask = MASK_ZERO,.pgdir = (PTE *)PGDIR_PA},
+	{.pid = 0,.kernel_sp = INIT_KERNEL_STACK + 4 * PAGE_SIZE,.user_sp = INIT_KERNEL_STACK + 4 * PAGE_SIZE,
+	 .core_mask = MASK_ONE,.pgdir = (PTE *)PGDIR_PA}
 };
 
 LIST_HEAD(ready_queue);

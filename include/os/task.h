@@ -17,6 +17,8 @@
 typedef struct {
 	uint32_t block_id;
 	uint32_t block_num;
+	uint32_t file_size;
+	uint32_t mem_size;
 	uint8_t filename[MAXFILENAME];
 } task_info_t;
 

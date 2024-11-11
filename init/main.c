@@ -1,3 +1,4 @@
+#include <pgtable.h>
 #include <common.h>
 #include <asm.h>
 #include <asm/unistd.h>
@@ -70,7 +71,7 @@ static void init_task_info(void)
 
 /************************************************************/
 static void init_pcb_stack(
-    ptr_t kernel_stack, ptr_t user_stack, ptr_t entry_point,
+    ptr_t kernel_stack, ptr_t kuser_stack, ptr_t entry_point,
     pcb_t *pcb, int argc, char **argv)
 {
 	// P3, pass parameter to the user stack
@@ -135,14 +136,41 @@ static void init_pcb_stack(
 
 int add_new_task(char * str, int argc, char *argv[], int pid)
 {
-	ptr_t entrypoint;
-	ptr_t kernel_stack,usr_stack;
-
-	if((entrypoint = load_task_img_by_name(str)) != 0)
+	ptr_t kernel_stack,kusr_stack;
+	PTE * pgdir;
+	int task_id;
+	int block_id;
+	int block_num;
+	int page_number;
+	uint64_t kaddr;
+	if((task_id = find_task(str)) != -1)
 	{
-		kernel_stack = allocKernelStack(1);
-		usr_stack = allocUserStack(4);
-		init_pcb_stack(kernel_stack, usr_stack, entrypoint, &pcb[pid-1],argc,argv);
+		pgdir = (PTE *)allocPgtabPage();
+
+		share_pgtable((uintptr_t)pgdir, PGDIR_PA);
+
+		pcb[pid - 1].pgdir = pgdir;
+		page_number = 1 + (tasks[task_id].mem_size >> NORMAL_PAGE_SHIFT);
+
+		block_id = tasks[task_id].block_id;
+		block_num = tasks[task_id].block_num;
+		for(uint64_t va = USER_ENTRYPOINT, i = 0; i < page_number; va += PAGE_SIZE, i++)
+		{
+			kaddr = alloc_page_helper(va, pgdir);
+			if(block_num >= 2)
+				load_task_l(kaddr,block_id,2);
+			else
+				load_task_l(kaddr,block_id,block_num);
+			if(block_num > 0)
+			{
+				block_num -= 2;
+				block_id += 2;
+			}
+		}
+
+		kusr_stack = alloc_page_helper(USER_STACK_ADDR - PAGE_SIZE, pgdir) + PAGE_SIZE;
+		kernel_stack = alloc_page_helper(KERNEL_STACK_ADDR - PAGE_SIZE, pgdir) + PAGE_SIZE;
+		init_pcb_stack(kernel_stack, kusr_stack, USER_ENTRYPOINT, &pcb[pid-1],argc,argv);
 		pcb[pid-1].status = TASK_READY;
 		return 0;
 	}
@@ -182,7 +210,7 @@ static void init_pcb(void)
 	char *shell_argv[shell_argc];
 	shell_argv[0] = "0x3";
 	shell_argv[1] = "shell";
-	do_taskset(shell_argc, shell_argv);
+	//do_taskset(shell_argc, shell_argv);
 
 }
 
@@ -223,8 +251,6 @@ static void init_syscall(void)
 	syscall[SYSCALL_MBOX_RECV]	= (long (*)())do_mbox_recv;
 }
 
-/************************************************************/
-
 /*
  * Once a CPU core calls this function,
  * it will stop executing!
@@ -236,10 +262,27 @@ static void kernel_brake(void)
         __asm__ volatile("wfi");
 }
 
+
+static void cleanTempPgtab()
+{
+	uint64_t vpn2 = 1lu;
+
+	freePage(pa2kva(get_pa(((PTE *)pa2kva(PGDIR_PA))[vpn2])));
+
+	set_pfn(&((PTE *)pa2kva(PGDIR_PA))[vpn2], 0);
+	set_attribute(&((PTE *)pa2kva(PGDIR_PA))[vpn2], 0);
+	local_flush_tlb_all();
+}
+
+
+/*********************************************************************/
+
 int main(void)
 {
 	if(get_current_cpu_id() == 0)
 	{
+		init_page();
+
 		// Init jump table provided by kernel and bios(ΦωΦ)
 		init_jmptab();
 
@@ -269,30 +312,35 @@ int main(void)
 		init_syscall();
 		printk("> [INIT] System call initialized successfully.\n");
 
-    // Init screen (QAQ)
-    init_screen();
-    printk("> [INIT] SCREEN initialization succeeded.\n");
-
-    /*
-     * Just start kernel with VM and print this string
-     * in the first part of task 1 of project 4.
-     * NOTE: if you use SMP, then every CPU core should call
-     *  `kernel_brake()` to stop executing!
-     */
-    printk("> [INIT] CPU #%u has entered kernel with VM!\n",
-        (unsigned int)get_current_cpu_id());
-    // TODO: [p4-task1 cont.] remove the brake and continue to start user processes.
-    kernel_brake();
+		// Init screen (QAQ)
+		init_screen();
+		//printk("> [INIT] SCREEN initialization succeeded.\n");
 
 		wakeup_other_hart();
 
-		printl("core 0\n");
+
+		/*
+		* Just start kernel with VM and print this string
+		* in the first part of task 1 of project 4.
+		* NOTE: if you use SMP, then every CPU core should call
+		*  `kernel_brake()` to stop executing!
+		*/
+		printl("> [INIT] CPU #%u has entered kernel with VM!\n",
+			(unsigned int)get_current_cpu_id());
+		// TODO: [p4-task1 cont.] remove the brake and continue to start user processes.
+		kernel_brake();
 
 	}
 	else
 	{
 		smp_init();
-		printl("core 1\n");
+
+		cleanTempPgtab();
+
+		printl("> [INIT] CPU #%u has entered kernel with VM!\n",
+			(unsigned int)get_current_cpu_id());
+
+		kernel_brake();
 	}
 
 	/*

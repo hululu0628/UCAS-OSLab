@@ -62,9 +62,6 @@
 	csrr	t2,stval
 	csrr 	t3,scause
 
-	blt 	t3,zero,INTER			# scause >= 0, handling exception, sepc = nextpc
-	addi 	t1,t1,4
-INTER:
 	sd 	t0,OFFSET_REG_SSTATUS(sp)
 	sd 	t1,OFFSET_REG_SEPC(sp)
 	sd 	t2,OFFSET_REG_STVAL(sp)

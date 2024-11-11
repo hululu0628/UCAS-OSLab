@@ -6,8 +6,8 @@
 #include <asm.h>
 #include <csr.h>
 
-#define KERNEL_STACK_0		0x504ff000	// in p1: 0x50500000
-#define KERNEL_STACK_1		0x50501000
+#define KERNEL_STACK_0		0xffffffc052002000	// in p1: 0x50500000
+#define KERNEL_STACK_1		0xffffffc052004000
 
 .section ".entry_function","ax"
 ENTRY(_start)
@@ -29,7 +29,7 @@ FLAT:
 	blt 	a0,a1,FLAT		
 EMPBSS:
   /* TODO: [p1-task2] setup C environment */
-	li 	sp,KERNEL_STACK_0	# set kernel stack pointer to 0x50501000
+	li 	sp,KERNEL_STACK_0	# set kernel stack pointer to 0xffffffc0_52002000
 	li 	fp,KERNEL_STACK_0	# not using fp, but still initialising it
 	j 	main			# jump to kernel, no need to return
 

@@ -30,6 +30,8 @@
 typedef struct {
 	uint32_t block_id;
 	uint32_t block_num;
+	uint32_t file_size;
+	uint32_t mem_size;
 	uint8_t filename[MAXFILENAME];
 } task_info_t;
 
@@ -124,10 +126,21 @@ static void create_image(int nfiles, char *files[])
 			/* read program header */
 			read_phdr(&phdr, fp, ph, ehdr);
 
-			if (phdr.p_type != PT_LOAD) continue;
+			if (phdr.p_type != PT_LOAD) 
+				continue;
+			else
+				printf("\tType of segment %d is LOAD\n",ph);
 
 			/* write segment to the image */
 			write_segment(phdr, fp, img, &phyaddr);
+
+			// only one segement should be loaded
+			// add in p4-task1
+			if(tidx >= 0)
+			{
+				taskinfo[tidx].file_size = phdr.p_filesz;
+				taskinfo[tidx].mem_size = phdr.p_memsz;
+			}
 
 			/* update nbytes_kernel */
 			if (strcmp(*files, "main") == 0) {

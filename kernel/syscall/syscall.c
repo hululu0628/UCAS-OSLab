@@ -11,6 +11,7 @@ void handle_syscall(regs_context_t *regs, uint64_t interrupt, uint64_t cause)
 	* and pay attention to the return value and sepc
 	*/
 	// result = syscall[a7](a0,a1,a2,a3,a4)
+	regs->sepc += 4;	// for syscall, return pc = next pc of ecall
 	long result = syscall[regs->regs[A7]](regs->regs[A0],regs->regs[A1],regs->regs[A2],regs->regs[A3],regs->regs[A4]);
-	regs->regs[10] = result;
+	regs->regs[A0] = result;
 }
