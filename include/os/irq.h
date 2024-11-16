@@ -83,4 +83,6 @@ extern void disable_interrupt(void);
 extern void enable_preempt(void);
 extern void disable_preempt(void);
 
+extern void ret_from_trap();
+
 #endif

@@ -109,11 +109,17 @@ int main(void)
 				{
 					if(cmd.argc != 1 && strcmp(args[cmd.argc - 1],"&") == 0)
 					{
-						sys_exec(args[0], cmd.argc - 1, (char **)cmd.argv);
+						if(sys_fork() == 0)
+						{
+							//while(1);
+							sys_exec(args[0], cmd.argc - 1, (char **)cmd.argv);
+						}
 					}
 					else
 					{
+						// unfinished
 						int pid;
+						sys_fork();
 						pid = sys_exec(args[0], cmd.argc, (char **)cmd.argv);
 						sys_waitpid(pid);
 					}

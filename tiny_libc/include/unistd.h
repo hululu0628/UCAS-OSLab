@@ -36,6 +36,8 @@ void sys_clear(void);
 // A/C-core
 pid_t  sys_exec(char *name, int argc, char **argv);
 
+pid_t  sys_fork(void);
+
 void sys_exit(void);
 int  sys_kill(pid_t pid);
 int  sys_waitpid(pid_t pid);

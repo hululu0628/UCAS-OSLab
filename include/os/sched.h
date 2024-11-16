@@ -73,6 +73,10 @@ typedef enum {
 typedef struct pcb
 {
 	/* register context */
+	// in entry.S, when storing trapframe, using offset
+	// modify the offset when modifying the place of trapframe
+	regs_context_t trapframe;
+
 	// NOTE: this order must be preserved, which is defined in regs.h!!
 	reg_t kernel_sp;
 	reg_t user_sp;
@@ -83,7 +87,8 @@ typedef struct pcb
 	list_node_t list;
 	list_head wait_list;
 
-	struct pcb * pcb_ptr;
+	// pointer to parent process
+	struct pcb * parent;
 
 	/* process id */
 	pid_t pid;
@@ -92,6 +97,10 @@ typedef struct pcb
 	task_status_t status;
 
 	PTE * pgdir;
+
+	uint32_t dt_size;
+	uint32_t us_size;
+	uint32_t ks_size;
 
 	/* for taskset */
 	core_mask_t core_mask;
@@ -118,11 +127,10 @@ extern list_head sleep_queue;
 
 /* current running task PCB */
 register pcb_t * current_running asm("tp");
-extern pid_t process_id[NR_CPUS];
+extern pid_t process_id[CPU_NUM];
 
 extern pcb_t pcb[NUM_MAX_TASK]; 	// pid from 1 to 16
-extern pcb_t pid0_pcb[NR_CPUS];
-extern const ptr_t pid0_stack[NR_CPUS];
+extern pcb_t pid0_pcb[CPU_NUM];
 
 extern void switch_to(pcb_t *prev, pcb_t *next);
 void do_scheduler(void);
@@ -138,11 +146,26 @@ extern pid_t do_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t ar
 #else
 extern pid_t do_exec(char *name, int argc, char *argv[]);
 #endif
+extern pid_t exec(char *name, int argc, char **argv);
+extern pid_t do_fork(void);
 extern void do_exit(void);
 extern int do_kill(pid_t pid);
 extern int do_waitpid(pid_t pid);
 extern void do_process_show();
 extern pid_t do_getpid();
+extern int do_taskset(int argc, char **argv); 
+
+extern int alloc_proc(void);
+
+extern uint64_t add_new_task(char *str, int argc, char **argv, int pid);
+extern void init_switch_to(ptr_t kernel_stack, pcb_t * pcb);
+extern void init_pcb_stack(
+    ptr_t kernel_stack, ptr_t kuser_stack, ptr_t entry_point,
+    pcb_t *pcb, int argc, char **argv);
 /************************************************************/
+
+extern pcb_t * switch_pgtable(pcb_t * pcb);
+
+extern PTE * get_pgdir(pcb_t * pcb);
 
 #endif

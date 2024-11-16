@@ -40,9 +40,9 @@
 #define OFFSET_REG_RA           8
 
 /* pointers */
-#define OFFSET_REG_SP           16 // stack
-#define OFFSET_REG_GP           24 // global
-#define OFFSET_REG_TP           32 // thread
+#define OFFSET_REG_SP           16	// stack
+#define OFFSET_REG_GP           24 	// global
+#define OFFSET_REG_TP           32 	// thread
 
 /* temporary */
 #define OFFSET_REG_T0           40
@@ -82,16 +82,16 @@
 #define OFFSET_REG_T6           248
 
 /* privileged register */
-#define OFFSET_REG_SSTATUS      256
-#define OFFSET_REG_SEPC         264
-#define OFFSET_REG_STVAL     272
-#define OFFSET_REG_SCAUSE       280
+#define OFFSET_CSR_SSTATUS      256
+#define OFFSET_CSR_SEPC         264
+#define OFFSET_CSR_STVAL     	272
+#define OFFSET_CSR_SCAUSE       280
 
 /* Size of stack frame, word/double word alignment */
 #define OFFSET_SIZE             288
 
-#define PCB_KERNEL_SP          0
-#define PCB_USER_SP            8
+#define PCB_KERNEL_SP          0 + OFFSET_SIZE
+#define PCB_USER_SP            8 + OFFSET_SIZE
 
 /* offset in switch_to */
 #define SWITCH_TO_RA     0
@@ -147,6 +147,7 @@
 #define T4   	29   	// Temporary Register (x29)
 #define T5   	30   	// Temporary Register (x30)
 #define T6   	31   	// Temporary Register (x31)
+
 
 
 #endif

@@ -7,6 +7,8 @@
 #include <csr.h>
 
 /* maybe you need another stack for booting? */
+// For a two-core cpu, there's no core starting at the same time,
+// thus these cores can reuse this stack
 .equ boot_stack_top_base, 0x50202000
 
 .section ".bootkernel_entry","ax"

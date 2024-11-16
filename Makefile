@@ -33,7 +33,7 @@ MINICOM         = minicom
 # Build/Debug Flags and Variables
 # -----------------------------------------------------------------------
 
-CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3
+CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3 -mabi=lp64
 # CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany
 
 BOOT_INCLUDE    = -I$(DIR_ARCH)/include
@@ -134,7 +134,7 @@ asm: $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 	for elffile in $^; do $(OBJDUMP) -d $$elffile > $(notdir $$elffile).txt; done
 
 gdb:
-	$(GDB) $(ELF_MAIN) -ex "target remote:1234"
+	$(GDB) $(ELF_MAIN) -ex "target remote:1234" -ex "set tdesc filename $(DIR_OSLAB)/riscv_ucas24.xml"
 
 run:
 	$(QEMU) $(QEMU_OPTS)

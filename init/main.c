@@ -7,7 +7,6 @@
 #include <os/loader.h>
 #include <os/irq.h>
 #include <os/sched.h>
-#include <os/exec.h>		//for p3-task1
 #include <os/list.h>
 #include <os/lock.h>
 #include <os/kernel.h>
@@ -22,15 +21,9 @@
 #include <type.h>
 #include <csr.h>
 
-extern void ret_from_trap();
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
-
-// char buf[50];
-
-// int tasknum;
-
 
 static void init_jmptab(void)
 {
@@ -70,112 +63,19 @@ static void init_task_info(void)
 
 
 /************************************************************/
-static void init_pcb_stack(
-    ptr_t kernel_stack, ptr_t kuser_stack, ptr_t entry_point,
-    pcb_t *pcb, int argc, char **argv)
+
+static inline void load_shell()
 {
-	// P3, pass parameter to the user stack
-	ptr_t argv_base;
-	ptr_t usp;
-	argv_base = user_stack - sizeof(char *) * argc;
-	user_stack = argv_base;
-	usp = argv_base;
-	for(int i = 0; i < argc; i++)
-	{
-		user_stack = user_stack - (strlen(argv[i]) + 1);
-		strcpy((char *)user_stack,argv[i]);
-		memcpy((uint8_t *)usp, (const uint8_t *)&user_stack, sizeof(char *));
-		usp += sizeof(char *);
-	}
-	user_stack = user_stack & 0xffffffffffffff80;
+	int shell_argc = 2;
+	char *shell_argv[shell_argc];
+	shell_argv[0] = "0x3";
+	shell_argv[1] = "shell";
+	int pid = do_taskset(shell_argc, shell_argv);
 
-	/* TODO: [p2-task3] initialization of registers on kernel stack
-	* HINT: sp, ra, sepc, sstatus
-	* NOTE: To run the task in user mode, you should set corresponding bits
-	*     of sstatus(SPP, SPIE, etc.).
-	*/
-	regs_context_t *pt_regs = (regs_context_t *)(kernel_stack - sizeof(regs_context_t));
-	
-	pt_regs->sstatus = SR_SPIE;		// return U-mode(SPP == 0) and enable interrupt gloablly(SPIE == 1)
-	pt_regs->sepc = entry_point;		// jump to entrypoint using sret
-	pt_regs->regs[SP] = user_stack;
-	pt_regs->regs[TP] = (reg_t)pcb;
-	pt_regs->regs[A0] = (reg_t)argc;
-	pt_regs->regs[A1] = (reg_t)argv_base;
-
-
-	/* TODO: [p2-task1] set sp to simulate just returning from switch_to
-	* NOTE: you should prepare a stack, and push some values to
-	* simulate a callee-saved context.
-	*/
-	switchto_context_t *pt_switchto = (switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
-
-	pcb->kernel_sp = (reg_t)pt_switchto;
-	pcb->user_sp = (reg_t)user_stack;
-
-	// for user process, jump to entrypoint by using sret
-	pt_switchto->regs[0] = (reg_t)ret_from_trap;
-	pt_switchto->regs[1] = pcb->kernel_sp;
-	pt_switchto->regs[2] = 0;
-	pt_switchto->regs[3] = 0;
-	pt_switchto->regs[4] = 0;
-	pt_switchto->regs[5] = 0;
-	pt_switchto->regs[6] = 0;
-	pt_switchto->regs[7] = 0;
-	pt_switchto->regs[8] = 0;
-	pt_switchto->regs[9] = 0;
-	pt_switchto->regs[10] = 0;
-	pt_switchto->regs[11] = 0;
-	pt_switchto->regs[12] = 0;
-	pt_switchto->regs[13] = 0;
-
-
-}
-
-
-
-int add_new_task(char * str, int argc, char *argv[], int pid)
-{
-	ptr_t kernel_stack,kusr_stack;
-	PTE * pgdir;
-	int task_id;
-	int block_id;
-	int block_num;
-	int page_number;
-	uint64_t kaddr;
-	if((task_id = find_task(str)) != -1)
-	{
-		pgdir = (PTE *)allocPgtabPage();
-
-		share_pgtable((uintptr_t)pgdir, PGDIR_PA);
-
-		pcb[pid - 1].pgdir = pgdir;
-		page_number = 1 + (tasks[task_id].mem_size >> NORMAL_PAGE_SHIFT);
-
-		block_id = tasks[task_id].block_id;
-		block_num = tasks[task_id].block_num;
-		for(uint64_t va = USER_ENTRYPOINT, i = 0; i < page_number; va += PAGE_SIZE, i++)
-		{
-			kaddr = alloc_page_helper(va, pgdir);
-			if(block_num >= 2)
-				load_task_l(kaddr,block_id,2);
-			else
-				load_task_l(kaddr,block_id,block_num);
-			if(block_num > 0)
-			{
-				block_num -= 2;
-				block_id += 2;
-			}
-		}
-
-		kusr_stack = alloc_page_helper(USER_STACK_ADDR - PAGE_SIZE, pgdir) + PAGE_SIZE;
-		kernel_stack = alloc_page_helper(KERNEL_STACK_ADDR - PAGE_SIZE, pgdir) + PAGE_SIZE;
-		init_pcb_stack(kernel_stack, kusr_stack, USER_ENTRYPOINT, &pcb[pid-1],argc,argv);
-		pcb[pid-1].status = TASK_READY;
-		return 0;
-	}
-	else  
-		return -1;
+	// there's a temp content in kernel pgdir 
+	// (0x5000000~0x51000000 to 0x50000000~0x51000000)
+	// the index of pgd is one 
+	((PTE *)pcb[pid-1].pgdir)[1] = 0;
 }
 
 
@@ -183,8 +83,7 @@ static void init_pcb(void)
 {
 	/* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
 	int i;
-	int current_cpuid = get_current_cpu_id();
-	// initialize pcb array
+	// initialize pcb array (for user)
 	for(i = 0; i < NUM_MAX_TASK; i++)
 	{
 		pcb[i].pid = i + 1;
@@ -197,54 +96,57 @@ static void init_pcb(void)
 		pcb[i].current_core_id = NO_CORE;
 	}
 
-	/* TODO: [p2-task1] remember to initialize 'current_running' */
-
-	pid0_pcb[current_cpuid].status = TASK_RUNNING;
-	pid0_pcb[current_cpuid].current_core_id = CORE_ZERO;
-	current_running = &pid0_pcb[current_cpuid];		// current running is kernel
-	process_id[current_cpuid] = pid0_pcb[current_cpuid].pid;
-
-
-	// load shell
-	int shell_argc = 2;
-	char *shell_argv[shell_argc];
-	shell_argv[0] = "0x3";
-	shell_argv[1] = "shell";
-	//do_taskset(shell_argc, shell_argv);
 
 }
 
 static void init_syscall(void)
 {
 	// TODO: [p2-task3] initialize system call table.
+
+	// process management
 	syscall[SYSCALL_SLEEP] 		= (long (*)())do_sleep;
 	syscall[SYSCALL_YIELD] 		= (long (*)())do_scheduler;
 	syscall[SYSCALL_TASKSET]	= (long (*)())do_taskset;
-	syscall[SYSCALL_WRITE] 		= (long (*)())screen_write;
-	syscall[SYSCALL_CURSOR] 	= (long (*)())screen_move_cursor;
-	syscall[SYSCALL_REFLUSH] 	= (long (*)())screen_reflush;
-	syscall[SYSCALL_GET_TIMEBASE] 	= (long (*)())get_time_base;
-	syscall[SYSCALL_GET_TICK] 	= (long (*)())get_ticks;
-	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
-	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
-	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
-	syscall[SYSCALL_PUTCHAR]	= (long (*)())screen_putchar;
-	syscall[SYSCALL_GETCHAR]	= (long (*)())bios_getchar;
 	syscall[SYSCALL_PS]		= (long (*)())do_process_show;
-	syscall[SYSCALL_EXEC] 		= (long (*)())do_exec;
+	syscall[SYSCALL_EXEC] 		= (long (*)())exec;
 	syscall[SYSCALL_EXIT]		= (long (*)())do_exit;
-	syscall[SYSCALL_CLEAR]		= (long (*)())screen_clear;
 	syscall[SYSCALL_KILL]		= (long (*)())do_kill;
 	syscall[SYSCALL_GETPID]		= (long (*)())do_getpid;
 	syscall[SYSCALL_WAITPID] 	= (long (*)())do_waitpid;
+	syscall[SYSCALL_FORK]		= (long (*)())do_fork;
+
+	// get input from terminal
+	syscall[SYSCALL_GETCHAR]	= (long (*)())bios_getchar;
+
+	// screen
+	syscall[SYSCALL_PUTCHAR]	= (long (*)())screen_putchar;
+	syscall[SYSCALL_WRITE] 		= (long (*)())screen_write;
+	syscall[SYSCALL_CURSOR] 	= (long (*)())screen_move_cursor;
+	syscall[SYSCALL_REFLUSH] 	= (long (*)())screen_reflush;
+	syscall[SYSCALL_CLEAR]		= (long (*)())screen_clear;
+
+	// cpu time attribute
+	syscall[SYSCALL_GET_TIMEBASE] 	= (long (*)())get_time_base;
+	syscall[SYSCALL_GET_TICK] 	= (long (*)())get_ticks;
+
+	// mutex
+	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
+	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
+	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
+	
+	// barrier
 	syscall[SYSCALL_BARR_INIT]	= (long (*)())do_barrier_init;
 	syscall[SYSCALL_BARR_WAIT]	= (long (*)())do_barrier_wait;
 	syscall[SYSCALL_BARR_DESTROY]	= (long (*)())do_barrier_destroy;
+
+	// condition
 	syscall[SYSCALL_COND_INIT]	= (long (*)())do_condition_init;
 	syscall[SYSCALL_COND_WAIT]	= (long (*)())do_condition_wait;
 	syscall[SYSCALL_COND_SIGNAL]	= (long (*)())do_condition_signal;
 	syscall[SYSCALL_COND_BROADCAST]	= (long (*)())do_condition_broadcast;
 	syscall[SYSCALL_COND_DESTROY]	= (long (*)())do_condition_destroy;
+
+	// mailbox
 	syscall[SYSCALL_MBOX_OPEN]	= (long (*)())do_mbox_open;
 	syscall[SYSCALL_MBOX_CLOSE]	= (long (*)())do_mbox_close;
 	syscall[SYSCALL_MBOX_SEND]	= (long (*)())do_mbox_send;
@@ -267,13 +169,20 @@ static void cleanTempPgtab()
 {
 	uint64_t vpn2 = 1lu;
 
-	freePage(pa2kva(get_pa(((PTE *)pa2kva(PGDIR_PA))[vpn2])));
+	// freePage(pa2kva(get_pa(((PTE *)pa2kva(PGDIR_PA))[vpn2])));
 
-	set_pfn(&((PTE *)pa2kva(PGDIR_PA))[vpn2], 0);
-	set_attribute(&((PTE *)pa2kva(PGDIR_PA))[vpn2], 0);
+	((PTE *)pa2kva(PGDIR_PA))[vpn2] = 0;
+
 	local_flush_tlb_all();
 }
 
+static void inline init_sstatus(void)
+{
+	asm volatile(
+		"li	t0,0x00040000\n\t"
+		"csrs	sstatus,t0\n\t"
+	);
+}
 
 /*********************************************************************/
 
@@ -295,6 +204,9 @@ int main(void)
 
 		// Init Process Control Blocks |•'-'•) ✧
 		init_pcb();
+
+		init_pcb0(0);
+		
 		printk("> [INIT] PCB initialization succeeded.\n");
 
 		// Read CPU frequency (｡•ᴗ-)_
@@ -316,6 +228,8 @@ int main(void)
 		init_screen();
 		//printk("> [INIT] SCREEN initialization succeeded.\n");
 
+		load_shell();
+
 		wakeup_other_hart();
 
 
@@ -328,7 +242,7 @@ int main(void)
 		printl("> [INIT] CPU #%u has entered kernel with VM!\n",
 			(unsigned int)get_current_cpu_id());
 		// TODO: [p4-task1 cont.] remove the brake and continue to start user processes.
-		kernel_brake();
+		//kernel_brake();
 
 	}
 	else
@@ -340,23 +254,10 @@ int main(void)
 		printl("> [INIT] CPU #%u has entered kernel with VM!\n",
 			(unsigned int)get_current_cpu_id());
 
-		kernel_brake();
+		// kernel_brake();
 	}
 
-	/*
-	do_sleep(2);
-
-	screen_clear();
-
-	getTask();
-
-	allocReadyProcess();
-
-	do_sleep(2);
-
-	screen_clear();
-	*/
-
+	init_sstatus();
 
 	// TODO: [p2-task4] Setup timer interrupt and 
 	// enable all interrupt globally

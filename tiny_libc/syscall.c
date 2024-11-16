@@ -114,9 +114,14 @@ pid_t  sys_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2)
 pid_t  sys_exec(char *name, int argc, char **argv)
 {
 	/* TODO: [p3-task1] call invoke_syscall to implement sys_exec */
-	invoke_syscall(SYSCALL_EXEC, (long)name, (long)argc, (long)argv, 0, 0);
+	return invoke_syscall(SYSCALL_EXEC, (long)name, (long)argc, (long)argv, 0, 0);
 }
 #endif
+
+pid_t sys_fork(void)
+{
+	return invoke_syscall(SYSCALL_FORK, 0, 0, 0, 0, 0);
+}
 
 void sys_exit(void)
 {
@@ -170,7 +175,7 @@ void sys_clear(void)
 int  sys_barrier_init(int key, int goal)
 {
 	/* TODO: [p3-task2] call invoke_syscall to implement sys_barrier_init */
-	invoke_syscall(SYSCALL_BARR_INIT, (long)key, (long)goal, 0, 0, 0);
+	return invoke_syscall(SYSCALL_BARR_INIT, (long)key, (long)goal, 0, 0, 0);
 }
 
 void sys_barrier_wait(int bar_idx)

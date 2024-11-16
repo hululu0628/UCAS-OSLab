@@ -170,7 +170,7 @@ static void create_image(int nfiles, char *files[])
 			{
 				taskinfo[tidx].block_id = NBYTES2SEC(before_addr);
 				taskinfo[tidx].block_num = NBYTES2SEC(after_addr) - NBYTES2SEC(before_addr);
-				strcpy(taskinfo[tidx].filename, *files);
+				strcpy((char *)taskinfo[tidx].filename, *files);
 			}
 		}
 

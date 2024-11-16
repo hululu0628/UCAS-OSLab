@@ -1,3 +1,5 @@
+#include <os/mm.h>
+#include <pgtable.h>
 #include <atomic.h>
 #include <os/sched.h>
 #include <os/smp.h>
@@ -10,15 +12,28 @@
 
 spin_lock_t slock;
 
+
+void init_pcb0(int cpuid)
+{
+	pid0_pcb[cpuid].pid = 0;
+	pid0_pcb[cpuid].kernel_sp = INIT_KERNEL_STACK + 2 * (1 + cpuid) * PAGE_SIZE;
+	pid0_pcb[cpuid].core_mask = 1 << cpuid;
+	pid0_pcb[cpuid].pgdir = (PTE *)pa2kva(PGDIR_PA);
+	pid0_pcb[cpuid].status = TASK_RUNNING;
+	pid0_pcb[cpuid].current_core_id = cpuid;
+	current_running = &pid0_pcb[cpuid];		// current running is kernel
+	process_id[cpuid] = pid0_pcb[cpuid].pid;
+}
+
 void smp_init()
 {
 	/* TODO: P3-TASK3 multicore*/
 	// init tp
 	int current_cpu_id = get_current_cpu_id();
-	pid0_pcb[current_cpu_id].status = TASK_RUNNING;
-	pid0_pcb[current_cpu_id].current_core_id = CORE_ONE;
-	current_running = &pid0_pcb[current_cpu_id];		// current running is kernel
-	process_id[current_cpu_id] = pid0_pcb[current_cpu_id].pid;
+
+	// init pcb0[cpuid]
+	init_pcb0(current_cpu_id);
+
 	// init stvec
 	setup_trap();
 }

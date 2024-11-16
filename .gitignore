@@ -2,3 +2,4 @@
 .clangd
 build
 *.txt
+.gdbinit

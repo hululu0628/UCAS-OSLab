@@ -1,3 +1,4 @@
+#include <os/pgfault.h>
 #include <os/irq.h>
 #include <os/time.h>
 #include <os/sched.h>
@@ -41,7 +42,10 @@ void init_trap()
 	int i;
 	for(i = 0; i < EXCC_COUNT; i++)
 		exc_table[i] = (handler_t)handle_other;
+
 	exc_table[EXCC_SYSCALL] = (handler_t)handle_syscall;
+	exc_table[EXCC_LOAD_PAGE_FAULT] = (handler_t)handle_load_pgfault;
+	exc_table[EXCC_STORE_PAGE_FAULT] = (handler_t)handle_store_pgfault;
 
 	/* TODO: [p2-task4] initialize irq_table */
 	/* NOTE: handle_int, handle_other, etc.*/

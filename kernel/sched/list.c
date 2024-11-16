@@ -21,7 +21,7 @@ void deleteNode(list_node_t * listnode)
 		listnode->prev = NULL;
 	}
 	else
-		printl("ERROR: In function deleteNode, the list is not in a queue\n");
+		printl("WARNING: In function deleteNode, the list is not in a queue\n");
 }
 
 void allocReadyProcess()

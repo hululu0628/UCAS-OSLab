@@ -9,6 +9,8 @@
 #define SATP_ASID_SHIFT 44lu
 #define SATP_MODE_SHIFT 60lu
 
+#define KERNEL_PGDIR_NUM 3
+
 #define NORMAL_PAGE_SHIFT 12lu
 #define NORMAL_PAGE_SIZE (1lu << NORMAL_PAGE_SHIFT)
 #define LARGE_PAGE_SHIFT 21lu

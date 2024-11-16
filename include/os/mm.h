@@ -23,11 +23,12 @@
  * THE SOFTWARE.
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * */
-#ifndef MM_H
-#define MM_H
+#ifndef INCLUDE_MM_H
+#define INCLUDE_MM_H
 
 #include <type.h>
 #include <pgtable.h>
+#include <os/sched.h>
 
 #define MAP_KERNEL 1
 #define MAP_USER 2
@@ -38,6 +39,10 @@
 #define DYNAMIC_START ((0x52000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
 #define GET_KADDR(num) (((uint64_t)num << NORMAL_PAGE_SHIFT) + 0xffffffc050000000)
 #define INIT_KERNEL_STACK 0xffffffc052000000
+
+#define DATA_AND_TEXT_SEG 0
+#define USER_STACK_SEG 1
+#define KERNEL_STACK_SEG 2
 
 /* Rounding; only works for n = power of two */
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
@@ -57,7 +62,6 @@ extern pageframe pages[PAGE_NUM];
 
 extern pageframe * free_list_proc;
 extern pageframe * free_list_pgtab;
-
 
 extern void init_page(void);
 
@@ -82,24 +86,25 @@ extern ptr_t allocLargePage(int numPage);
 
 // NOTE: A/C-core
 #define USER_STACK_ADDR 0xf00010000
-#define KERNEL_STACK_ADDR 0xffffffc080000000
+#define KERNEL_STACK_ADDR 0xfffffff000000000
 
 #endif
 
 // TODO [P4-task1] */
 extern void* kmalloc(size_t size);
 extern void share_pgtable(uintptr_t dest_pgdir, uintptr_t src_pgdir);
-extern uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir);
+extern uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits);
+
+extern uint64_t get_kaddr(uint64_t va, PTE * pgdir, int level);	// 给出三级页表，拿到对应的内核地址
+
+extern int uvmcopy(pcb_t * cpcb, pcb_t * ppcb);
+extern int uvmfree_seg(int flag, int size, PTE * pgdir);
+extern int uvmumap_seg(int flag, int size, PTE * pgdir);
+
 
 // TODO [P4-task4]: shm_page_get/dt */
 uintptr_t shm_page_get(int key);
 void shm_page_dt(uintptr_t addr);
-
-
-
-extern ptr_t allocKernelStack(int numPage);
-extern ptr_t allocUserStack(int numPage);
-
 
 
 extern ptr_t kalloc(int byte_num, int flags);
