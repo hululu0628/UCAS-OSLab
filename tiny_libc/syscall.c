@@ -123,6 +123,11 @@ pid_t sys_fork(void)
 	return invoke_syscall(SYSCALL_FORK, 0, 0, 0, 0, 0);
 }
 
+int sys_wait(int * status)
+{
+	return invoke_syscall(SYSCALL_WAIT, (long)status, 0, 0, 0, 0);
+}
+
 void sys_exit(void)
 {
 	/* TODO: [p3-task1] call invoke_syscall to implement sys_exit */

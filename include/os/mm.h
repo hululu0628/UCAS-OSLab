@@ -99,6 +99,7 @@ extern uint64_t get_kaddr(uint64_t va, PTE * pgdir, int level);	// 给出三级�
 
 extern int uvmcopy(pcb_t * cpcb, pcb_t * ppcb);
 extern int uvmfree_seg(int flag, int size, PTE * pgdir);
+extern int uvmfree_pgtable(pcb_t * pcb);
 extern int uvmumap_seg(int flag, int size, PTE * pgdir);
 
 

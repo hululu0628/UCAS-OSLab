@@ -132,7 +132,13 @@ int main(void)
 				{
 					if(cmd.argc != 1 && strcmp(args[cmd.argc - 1],"&") == 0)
 					{
-						sys_taskset(cmd.argc - 1, (char **)cmd.argv);
+						if(strcmp(args[0], "-p") != 0)
+						{
+							if(sys_fork() == 0)
+								sys_taskset(cmd.argc - 1, (char **)cmd.argv);
+						}
+						else
+							sys_taskset(cmd.argc - 1, (char **)cmd.argv);
 					}
 					else
 					{

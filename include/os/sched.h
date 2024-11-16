@@ -66,6 +66,7 @@ typedef enum {
 	TASK_BLOCKED,
 	TASK_RUNNING,
 	TASK_READY,
+	TASK_ZOMBIE,
 	TASK_EXITED,
 } task_status_t;
 
@@ -125,6 +126,9 @@ extern list_head ready_queue;
 /* sleep queue to be blocked in */
 extern list_head sleep_queue;
 
+/* waitlist */
+extern list_head wait_queue;
+
 /* current running task PCB */
 register pcb_t * current_running asm("tp");
 extern pid_t process_id[CPU_NUM];
@@ -146,8 +150,8 @@ extern pid_t do_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t ar
 #else
 extern pid_t do_exec(char *name, int argc, char *argv[]);
 #endif
-extern pid_t exec(char *name, int argc, char **argv);
 extern pid_t do_fork(void);
+extern int do_wait(int * status);
 extern void do_exit(void);
 extern int do_kill(pid_t pid);
 extern int do_waitpid(pid_t pid);
@@ -156,8 +160,13 @@ extern pid_t do_getpid();
 extern int do_taskset(int argc, char **argv); 
 
 extern int alloc_proc(void);
+extern void free_proc(pcb_t * pcb);
 
-extern uint64_t add_new_task(char *str, int argc, char **argv, int pid);
+extern void wakeup(pcb_t * pcb);
+
+extern void reparent(pcb_t * parent, pcb_t * child);
+
+// extern uint64_t add_new_task(char *str, int argc, char **argv, int pid);
 extern void init_switch_to(ptr_t kernel_stack, pcb_t * pcb);
 extern void init_pcb_stack(
     ptr_t kernel_stack, ptr_t kuser_stack, ptr_t entry_point,

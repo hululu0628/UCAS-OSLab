@@ -24,6 +24,7 @@ pcb_t pid0_pcb[CPU_NUM];
 
 LIST_HEAD(ready_queue);
 LIST_HEAD(sleep_queue);
+LIST_HEAD(wait_queue);
 
 /* global process id */
 pid_t process_id[CPU_NUM];
@@ -201,7 +202,7 @@ pid_t do_fork(void)
 	return pid;
 }
 
-pid_t exec(char *name, int argc, char **argv)
+pid_t do_exec(char *name, int argc, char **argv)
 {
 	char args_buf[10][20];		// shell的最大允许参数
 	char * kname = args_buf[0];
@@ -280,6 +281,7 @@ pid_t exec(char *name, int argc, char **argv)
 	}
 }
 
+/*
 pid_t do_exec(char *name, int argc, char **argv)
 {
 	int i;
@@ -300,22 +302,24 @@ pid_t do_exec(char *name, int argc, char **argv)
 		}
 	}
 	return pid;	// 修改：错误返回-1
-}
+}*/
 
 // 回收内存
 void do_exit(void)
 {
-	current_running->status = TASK_EXITED;
+	current_running->status = TASK_ZOMBIE;
 	freeQueueToReady(&current_running->wait_list);
+	reparent(&pcb[0], current_running);
+	wakeup(current_running->parent);
 	do_scheduler();
 }
 
 int do_kill(pid_t pid)
 {
-	if(pcb[pid - 1].status != TASK_EXITED)
+	if(pcb[pid - 1].status != TASK_EXITED && pcb[pid - 1].status != TASK_ZOMBIE)
 	{
 		deleteNode(&pcb[pid - 1].list);
-		pcb[pid - 1].status = TASK_EXITED;
+		pcb[pid - 1].status = TASK_ZOMBIE;
 		freeQueueToReady(&pcb[pid - 1].wait_list);
 		// 多把锁
 		for(int i = 0; i < LOCK_NUM; i++)
@@ -328,6 +332,27 @@ int do_kill(pid_t pid)
 			if(pcb[pid - 1].mbox_table[i] == 1)
 				do_mbox_close(i);
 		}
+
+		reparent(&pcb[0], &pcb[pid - 1]);
+		wakeup(current_running->parent);
+	}
+	return 0;
+}
+
+int do_wait(int * status)
+{
+	int i;
+	while(1)
+	{
+		for(i = 0; i < NUM_MAX_TASK; i++)
+		{
+			if(pcb[i].parent == current_running && pcb[i].status == TASK_ZOMBIE)
+			{
+				free_proc(&pcb[i]);
+				return i + 1;
+			}
+		}
+		do_block(&current_running->list, &wait_queue);
 	}
 	return 0;
 }
@@ -345,6 +370,11 @@ int do_waitpid(pid_t pid)
 	return 0;
 }
 
+void wakeup(pcb_t *pcb)
+{
+	do_unblock(&pcb->list);
+}
+
 int alloc_proc()
 {
 	int i;
@@ -360,6 +390,24 @@ int alloc_proc()
 		}
 	}
 	return -1;
+}
+
+void free_proc(pcb_t *pcb)
+{
+	uvmfree_seg(DATA_AND_TEXT_SEG, pcb->dt_size, pcb->pgdir);
+	uvmfree_seg(USER_STACK_SEG, pcb->us_size, pcb->pgdir);
+	uvmfree_seg(KERNEL_STACK_SEG, pcb->ks_size, pcb->pgdir);
+	
+	uvmfree_pgtable(pcb);
+
+	pcb->status = TASK_EXITED;
+	pcb->parent = 0;
+	pcb->pgdir = NULL;
+}
+
+void reparent(pcb_t *parent, pcb_t *child)
+{
+	child->parent = parent;
 }
 
 void init_switch_to(ptr_t kernel_stack, pcb_t * pcb)
@@ -430,7 +478,7 @@ void init_pcb_stack(
 }
 
 
-
+/*
 uint64_t add_new_task(char * str, int argc, char *argv[], int pid)
 {
 	ptr_t kernel_stack,kusr_stack;
@@ -485,4 +533,4 @@ uint64_t add_new_task(char * str, int argc, char *argv[], int pid)
 	}
 	else  
 		return -1;
-}
+}*/

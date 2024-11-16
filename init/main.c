@@ -64,18 +64,69 @@ static void init_task_info(void)
 
 /************************************************************/
 
-static inline void load_shell()
+static inline void load_init()
 {
-	int shell_argc = 2;
-	char *shell_argv[shell_argc];
-	shell_argv[0] = "0x3";
-	shell_argv[1] = "shell";
-	int pid = do_taskset(shell_argc, shell_argv);
+	int task_id = find_task("init");
+
+	ptr_t kernel_stack,kusr_stack;
+	PTE * pgdir;
+	int block_id;
+	int block_num;
+	int page_number;
+	uint64_t kaddr;
+
+	char *init_argv[1];
+	init_argv[0] = "init";
+
+	if(task_id != -1)
+	{
+		pgdir = (PTE *)allocPgtabPage();
+
+		share_pgtable((uintptr_t)pgdir, pa2kva(PGDIR_PA));
+
+		pcb[0].pgdir = pgdir;
+		page_number = 1 + (tasks[task_id].mem_size >> NORMAL_PAGE_SHIFT);
+
+		block_id = tasks[task_id].block_id;
+		block_num = tasks[task_id].block_num;
+		for(uint64_t va = USER_ENTRYPOINT, i = 0; i < page_number; va += PAGE_SIZE, i++)
+		{
+			kaddr = alloc_page_helper(va, pgdir, _PAGE_PRESENT 
+				| _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_USER);
+			if(block_num >= 8)
+				load_task_l(kaddr,block_id,8);
+			else
+				load_task_l(kaddr,block_id,block_num);
+			if(block_num > 0)
+			{
+				block_num -= 8;
+				block_id += 8;
+			}
+		}
+
+		// allocate one page for user_stack
+		kusr_stack = alloc_page_helper(USER_STACK_ADDR - PAGE_SIZE, pgdir, 
+			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER) + PAGE_SIZE;
+
+		// allocate one page for user's kernel_stack
+		kernel_stack = alloc_page_helper(KERNEL_STACK_ADDR - PAGE_SIZE, pgdir, 
+			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE) + PAGE_SIZE;
+			
+		init_pcb_stack(kernel_stack, kusr_stack, USER_ENTRYPOINT, &pcb[0],1,init_argv);
+
+		pcb[0].dt_size = page_number * PAGE_SIZE;
+		pcb[0].ks_size = PAGE_SIZE;
+		pcb[0].us_size = PAGE_SIZE;
+		pcb[0].status = TASK_READY;
+		pcb[0].core_mask = MASK_ZERO_ONE;
+
+		addToQueue(&pcb[0].list,&ready_queue);
+	}
 
 	// there's a temp content in kernel pgdir 
 	// (0x5000000~0x51000000 to 0x50000000~0x51000000)
 	// the index of pgd is one 
-	((PTE *)pcb[pid-1].pgdir)[1] = 0;
+	((PTE *)pcb[0].pgdir)[1] = 0;
 }
 
 
@@ -108,12 +159,13 @@ static void init_syscall(void)
 	syscall[SYSCALL_YIELD] 		= (long (*)())do_scheduler;
 	syscall[SYSCALL_TASKSET]	= (long (*)())do_taskset;
 	syscall[SYSCALL_PS]		= (long (*)())do_process_show;
-	syscall[SYSCALL_EXEC] 		= (long (*)())exec;
+	syscall[SYSCALL_EXEC] 		= (long (*)())do_exec;
 	syscall[SYSCALL_EXIT]		= (long (*)())do_exit;
 	syscall[SYSCALL_KILL]		= (long (*)())do_kill;
 	syscall[SYSCALL_GETPID]		= (long (*)())do_getpid;
 	syscall[SYSCALL_WAITPID] 	= (long (*)())do_waitpid;
 	syscall[SYSCALL_FORK]		= (long (*)())do_fork;
+	syscall[SYSCALL_WAIT]		= (long (*)())do_wait;
 
 	// get input from terminal
 	syscall[SYSCALL_GETCHAR]	= (long (*)())bios_getchar;
@@ -228,7 +280,7 @@ int main(void)
 		init_screen();
 		//printk("> [INIT] SCREEN initialization succeeded.\n");
 
-		load_shell();
+		load_init();
 
 		wakeup_other_hart();
 

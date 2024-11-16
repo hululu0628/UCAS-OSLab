@@ -91,12 +91,9 @@ int do_taskset(int argc, char **argv)
 	{
 		printl("In function do_taskset, argv[0] = %s\n",argv[0]);
 		mask = atoi(argv[0]);
-		pid = do_exec(argv[1], argc - 1, argv + 1);
-		if(pid > 0)
-		{
-			pcb[pid - 1].core_mask = mask;
-		}
-		return pid;
+		do_exec(argv[1], argc - 1, argv + 1);
+		current_running->core_mask = mask;
+		return current_running->pid;
 	}
 	return -1;
 }

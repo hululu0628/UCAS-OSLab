@@ -103,8 +103,8 @@ SRC_LIBC    = $(wildcard ./tiny_libc/*.c)
 OBJ_LIBC    = $(patsubst %.c, %.o, $(foreach file, $(SRC_LIBC), $(DIR_BUILD)/$(notdir $(file))))
 LIB_TINYC   = $(DIR_BUILD)/libtinyc.a
 
-SRC_SHELL	= $(DIR_TEST)/shell.c
-SRC_USER    = $(SRC_SHELL) $(wildcard $(DIR_TEST_PROJ)/*.c)
+# modified: add init.c
+SRC_USER    =  $(wildcard $(DIR_TEST)/*.c) $(wildcard $(DIR_TEST_PROJ)/*.c)
 ELF_USER    = $(patsubst %.c, %, $(foreach file, $(SRC_USER), $(DIR_BUILD)/$(notdir $(file))))
 
 # -----------------------------------------------------------------------

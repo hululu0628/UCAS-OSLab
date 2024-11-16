@@ -152,13 +152,13 @@ uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 
 }
 
-// level 3: page addr; 2: pt addt; 1: pmd addr;
+// level 3: page addr for va; 2: pt for va; 1: pmd for va; 0: pgd for va
 uint64_t get_kaddr(uint64_t va, PTE *pgdir, int level)
 {
 	PTE * pmd;
 	PTE * pt;
 
-	assert(level < 4 && level > 0);
+	assert((level < 4) && (level >= 0));
 
 	va &= VA_MASK;
 	uint64_t vpn2 = va >> (NORMAL_PAGE_SHIFT + PPN_BITS + PPN_BITS);
@@ -166,23 +166,26 @@ uint64_t get_kaddr(uint64_t va, PTE *pgdir, int level)
 	uint64_t vpn0 = ((va >> NORMAL_PAGE_SHIFT) ^ 
 			(vpn2 << (PPN_BITS + PPN_BITS))) ^ 
 			(vpn1 << PPN_BITS);
+
+	if(level == 0)
+		return (uint64_t)(pgdir + vpn2);
 	
 	if(pgdir[vpn2] == 0)
-		_panic("mm.c", 164, "get_kaddr");
+		return 0;
 	pmd = (PTE *)pa2kva(get_pa(pgdir[vpn2]));
 
 	if(level == 1)
 		return (uint64_t)(pmd + vpn1);
 
 	if(pmd[vpn1] == 0)
-		_panic("mm.c", 167, "get_kaddr");
+		return 0;
 	pt = (PTE *)pa2kva(get_pa(pmd[vpn1]));
 
 	if(level == 2)
 		return (uint64_t)(pt + vpn0);
 
 	if(pt[vpn0] == 0)
-		_panic("mm.c", 170, "get_kaddr");
+		return 0;
 	return pa2kva(get_pa(pt[vpn0])) + (va & (NORMAL_PAGE_SIZE - 1));
 
 }
@@ -250,6 +253,43 @@ int uvmumap_seg(int flag, int size, PTE * pgdir)
 		pte = (PTE *)get_kaddr(va_start + i, pgdir, 2);
 		*pte = 0;
 	}
+}
+
+int uvmfree_pgtable(pcb_t *pcb)
+{
+	uint64_t va_start,offset;
+	PTE * pte;
+	int level;
+	for(level = 1; level >= 0; level--)
+	{
+		va_start = USER_ENTRYPOINT;
+		for(offset = 0; offset < pcb->dt_size; offset += PAGE_SIZE)
+		{
+			if((pte = (PTE *)get_kaddr(va_start + offset,pcb->pgdir,level)) != 0)
+			{
+				freePage(pa2kva(get_pa(*pte)));
+			}
+		}
+		
+		va_start = USER_STACK_ADDR - pcb->us_size;
+		for(offset = 0; offset < pcb->us_size; offset += PAGE_SIZE)
+		{
+			if((pte = (PTE *)get_kaddr(va_start + offset,pcb->pgdir,level)) != 0)
+			{
+				freePage(pa2kva(get_pa(*pte)));
+			}
+		}
+
+		va_start = KERNEL_STACK_ADDR - pcb->ks_size;
+		for(offset = 0; offset < pcb->ks_size; offset += PAGE_SIZE)
+		{
+			if((pte = (PTE *)get_kaddr(va_start + offset,pcb->pgdir,level)) != 0)
+			{
+				freePage(pa2kva(get_pa(*pte)));
+			}
+		}
+	}
+	freePage((ptr_t)pcb->pgdir);
 }
 
 
