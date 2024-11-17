@@ -277,6 +277,10 @@ pid_t do_exec(char *name, int argc, char **argv)
 		current_running->ks_size = PAGE_SIZE;
 		current_running->us_size = PAGE_SIZE;
 
+		// modified third level page table,
+		// therefore the tlb must be reflushed
+		local_flush_tlb_all();
+
 		return 0;
 	}
 }
