@@ -34,7 +34,7 @@ void sys_clear(void);
 // S-core
 // pid_t  sys_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2);
 // A/C-core
-pid_t  sys_exec(char *name, int argc, char **argv);
+void sys_exec(char *name, int argc, char **argv);
 
 pid_t  sys_fork(void);
 

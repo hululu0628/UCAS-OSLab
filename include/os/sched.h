@@ -148,7 +148,7 @@ void do_unblock(list_node_t *);
 #ifdef S_CORE
 extern pid_t do_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2);
 #else
-extern pid_t do_exec(char *name, int argc, char *argv[]);
+extern void do_exec(char *name, int argc, char *argv[]);
 #endif
 extern pid_t do_fork(void);
 extern int do_wait(int * status);

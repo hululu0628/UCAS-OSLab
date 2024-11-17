@@ -136,6 +136,7 @@ asm: $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 gdb:
 	$(GDB) $(ELF_MAIN) -ex "target remote:1234" -ex "set tdesc filename $(DIR_OSLAB)/riscv_ucas24.xml"
 
+#	$(GDB) ./test/test_project4/rw -ex "target remote:1234" -ex "set tdesc filename $(DIR_OSLAB)/riscv_ucas24.xml"
 run:
 	$(QEMU) $(QEMU_OPTS)
 

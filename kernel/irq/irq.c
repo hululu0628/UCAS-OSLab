@@ -44,6 +44,7 @@ void init_trap()
 		exc_table[i] = (handler_t)handle_other;
 
 	exc_table[EXCC_SYSCALL] = (handler_t)handle_syscall;
+	exc_table[EXCC_INST_PAGE_FAULT] = (handler_t)handle_instr_pgfault;
 	exc_table[EXCC_LOAD_PAGE_FAULT] = (handler_t)handle_load_pgfault;
 	exc_table[EXCC_STORE_PAGE_FAULT] = (handler_t)handle_store_pgfault;
 

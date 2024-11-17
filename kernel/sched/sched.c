@@ -202,11 +202,12 @@ pid_t do_fork(void)
 	return pid;
 }
 
-pid_t do_exec(char *name, int argc, char **argv)
+void do_exec(char *name, int argc, char **argv)
 {
+	int kargc = argc;
 	char args_buf[10][20];		// shell的最大允许参数
 	char * kname = args_buf[0];
-	for(int i = 0; i < argc; i++)
+	for(int i = 0; i < kargc; i++)
 	{
 		strcpy(args_buf[i], argv[i]);
 	}
@@ -251,17 +252,17 @@ pid_t do_exec(char *name, int argc, char **argv)
 
 
 		ptr_t argv_base,kustack_start;
-		ptr_t usp;
+		char **usp;
 		kustack_start = kusr_stack;
-		argv_base = kusr_stack - sizeof(char *) * argc;
+		argv_base = kusr_stack - sizeof(char *) * kargc;
 		kusr_stack = argv_base;
-		usp = argv_base;
-		for(int i = 0; i < argc; i++)
+		usp = (char **)argv_base;
+		for(int i = 0; i < kargc; i++)
 		{
 			kusr_stack = kusr_stack - (strlen(args_buf[i]) + 1);
 			strcpy((char *)kusr_stack,args_buf[i]);
-			memcpy((uint8_t *)usp, (const uint8_t *)&kusr_stack, sizeof(char *));
-			usp += sizeof(char *);
+			*usp = (char *)(USER_STACK_ADDR - (kustack_start - kusr_stack));
+			usp += 1;
 		}
 		kusr_stack = kusr_stack & 0xffffffffffffff80;
 
@@ -270,7 +271,7 @@ pid_t do_exec(char *name, int argc, char **argv)
 		current_running->trapframe.sepc = USER_ENTRYPOINT;
 		current_running->trapframe.regs[SP] = USER_STACK_ADDR - (kustack_start - kusr_stack);
 		current_running->trapframe.regs[TP] = (reg_t)current_running;
-		current_running->trapframe.regs[A0] = (reg_t)argc;
+		current_running->trapframe.regs[A0] = (reg_t)kargc;
 		current_running->trapframe.regs[A1] = (reg_t)(USER_STACK_ADDR - (kustack_start - argv_base));
 
 		current_running->dt_size = page_number * PAGE_SIZE;
@@ -280,8 +281,6 @@ pid_t do_exec(char *name, int argc, char **argv)
 		// modified third level page table,
 		// therefore the tlb must be reflushed
 		local_flush_tlb_all();
-
-		return 0;
 	}
 }
 

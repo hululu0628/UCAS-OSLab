@@ -1,25 +1,28 @@
 #include <pgtable.h>
 #include <common.h>
-#include <asm.h>
-#include <asm/unistd.h>
-#include <asm/regs.h>
-#include <os/smp.h>
-#include <os/loader.h>
-#include <os/irq.h>
-#include <os/sched.h>
-#include <os/list.h>
-#include <os/lock.h>
-#include <os/kernel.h>
-#include <os/task.h>
-#include <os/string.h>
-#include <os/mm.h>
-#include <os/time.h>
-#include <sys/syscall.h>
 #include <screen.h>
 #include <printk.h>
 #include <assert.h>
 #include <type.h>
 #include <csr.h>
+#include <asm.h>
+#include <asm/unistd.h>
+#include <asm/regs.h>
+#include <sys/syscall.h>
+#include <os/kernel.h>
+#include <os/loader.h>
+#include <os/task.h>
+#include <os/string.h>
+#include <os/time.h>
+#include <os/irq.h>
+#include <os/sched.h>
+#include <os/list.h>
+#include <os/lock.h>
+#include <os/smp.h>
+#include <os/mm.h>
+#include <os/swap.h>
+
+
 
 
 // Task info array

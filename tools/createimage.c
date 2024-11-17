@@ -55,7 +55,7 @@ static uint32_t get_memsz(Elf64_Phdr phdr);
 static void write_segment(Elf64_Phdr phdr, FILE *fp, FILE *img, int *phyaddr);
 static void write_padding(FILE *img, int *phyaddr, int new_phyaddr);
 static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
-                           short tasknum, FILE *img, int secnum);
+                           short tasknum, FILE *img, int secnum, int * phyaddr);
 
 int main(int argc, char **argv)
 {
@@ -177,7 +177,7 @@ static void create_image(int nfiles, char *files[])
 		fclose(fp);
 		files++;
 	}
-	write_img_info(nbytes_kernel, taskinfo, tasknum, img, NBYTES2SEC(phyaddr));
+	write_img_info(nbytes_kernel, taskinfo, tasknum, img, NBYTES2SEC(phyaddr),&phyaddr);
 	fclose(img);
 }
 
@@ -253,7 +253,7 @@ static void write_padding(FILE *img, int *phyaddr, int new_phyaddr)
 }
 
 static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
-                           short tasknum, FILE * img, int secnum)
+                           short tasknum, FILE * img, int secnum, int * phyaddr)
 {
 
 	int task_sec_num;
@@ -263,11 +263,19 @@ static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
 
 	// store the information about programs in ""./test/test_project1" at the end of the image
 	fwrite(taskinfo,sizeof(task_info_t),tasknum,img);
+	*phyaddr += tasknum * sizeof(task_info_t);
+
+	// number of sectors occupied by the task_info
+	task_sec_num = NBYTES2SEC(tasknum * sizeof(task_info_t));
+
+	// padding the last sector for taskinfo,
+	// make sure that swap start from the beginning of a sector
+	write_padding(img, phyaddr, (*phyaddr - (*phyaddr % SECTOR_SIZE) + SECTOR_SIZE));
+	printf("total size: %d byte\n", *phyaddr);
 
 	// write data to the last few bytes of the first sector
 	fseek(img,TASK_SEC_NUM,SEEK_SET);
-	// number of sectors occupied by the task_info
-	task_sec_num = NBYTES2SEC(tasknum * sizeof(task_info_t));
+	
 	fwrite(&task_sec_num,sizeof(uint16_t),1,img);
 	// total sectors(or task info offset), occupies 4 bytes
 	fwrite(&secnum,sizeof(uint32_t),1,img);

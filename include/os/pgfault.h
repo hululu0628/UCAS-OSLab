@@ -8,4 +8,6 @@ extern void handle_load_pgfault(regs_context_t *regs, uint64_t stval, uint64_t s
 
 extern void handle_store_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause);
 
+extern void handle_instr_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause);
+
 #endif
