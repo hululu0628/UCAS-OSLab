@@ -70,6 +70,7 @@ static void init_task_info(void)
 static inline void load_init()
 {
 	int task_id = find_task("init");
+	pcb[0].task_id = task_id;
 
 	ptr_t kernel_stack,kusr_stack;
 	PTE * pgdir;
@@ -77,13 +78,15 @@ static inline void load_init()
 	int block_num;
 	int page_number;
 	uint64_t kaddr;
+	pageframe * t;
 
 	char *init_argv[1];
 	init_argv[0] = "init";
 
 	if(task_id != -1)
 	{
-		pgdir = (PTE *)allocPgtabPage();
+		t = allocPgtabPage();
+		pgdir = (PTE *)GET_KADDR(t->page_num);
 
 		share_pgtable((uintptr_t)pgdir, pa2kva(PGDIR_PA));
 
@@ -92,6 +95,7 @@ static inline void load_init()
 
 		block_id = tasks[task_id].block_id;
 		block_num = tasks[task_id].block_num;
+		// 加载init的代码段和数据段
 		for(uint64_t va = USER_ENTRYPOINT, i = 0; i < page_number; va += PAGE_SIZE, i++)
 		{
 			kaddr = alloc_page_helper(va, pgdir, _PAGE_PRESENT 
@@ -108,12 +112,13 @@ static inline void load_init()
 		}
 
 		// allocate one page for user_stack
+		// 此后在init stack的时候已经改变了用户栈
 		kusr_stack = alloc_page_helper(USER_STACK_ADDR - PAGE_SIZE, pgdir, 
-			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER) + PAGE_SIZE;
+			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY | _PAGE_USER) + PAGE_SIZE;
 
 		// allocate one page for user's kernel_stack
 		kernel_stack = alloc_page_helper(KERNEL_STACK_ADDR - PAGE_SIZE, pgdir, 
-			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE) + PAGE_SIZE;
+			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY) + PAGE_SIZE;
 			
 		init_pcb_stack(kernel_stack, kusr_stack, USER_ENTRYPOINT, &pcb[0],1,init_argv);
 
@@ -282,6 +287,9 @@ int main(void)
 		// Init screen (QAQ)
 		init_screen();
 		//printk("> [INIT] SCREEN initialization succeeded.\n");
+
+		// Init data for page swaping
+		init_swap();
 
 		load_init();
 

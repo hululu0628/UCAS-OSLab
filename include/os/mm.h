@@ -34,15 +34,26 @@
 #define MAP_USER 2
 #define MEM_SIZE 32
 #define PAGE_SIZE 4096 // 4K
-#define PAGE_NUM ((0x60000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
+#define PAGE_NUM ((0x52011000 - 0x50000000) >> NORMAL_PAGE_SHIFT)	// for debugging
 #define PGTAB_START ((0x51000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
 #define DYNAMIC_START ((0x52000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
 #define GET_KADDR(num) (((uint64_t)num << NORMAL_PAGE_SHIFT) + 0xffffffc050000000)
+#define GET_PAGE_NUM(kaddr) ((kaddr - 0xffffffc050000000) >> NORMAL_PAGE_SHIFT)
 #define INIT_KERNEL_STACK 0xffffffc052000000
 
 #define DATA_AND_TEXT_SEG 0
 #define USER_STACK_SEG 1
 #define KERNEL_STACK_SEG 2
+
+#define UNFREE_FLAG (1 << 0)
+#define READ_FLAG (1 << 1)     /* Readable */
+#define WRITE_FLAG (1 << 2)    /* Writable */
+#define EXEC_FLAG (1 << 3)     /* Executable */
+#define USER_FLAG (1 << 4)     /* User */
+#define GLOBAL_FLAG (1 << 5)   /* Global */
+#define ACCESS_FLAG (1 << 6) /* Set by hardware on any access */
+#define DIRTY_FLAG (1 << 7)    /* Set by hardware on any write */
+#define SOFT_FLAG (1 << 8)     /* Reserved for software */
 
 /* Rounding; only works for n = power of two */
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
@@ -53,6 +64,7 @@
 
 typedef struct pageframe
 {
+	PTE * pte;
 	uint32_t flags;
 	uint32_t page_num;
 	struct pageframe * next;
@@ -65,8 +77,8 @@ extern pageframe * free_list_pgtab;
 
 extern void init_page(void);
 
-extern ptr_t allocPgtabPage();
-extern ptr_t allocDynPage();
+extern pageframe * allocPgtabPage();
+extern pageframe * allocDynPage();
 
 
 // TODO [P4-task1] */

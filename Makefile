@@ -118,7 +118,7 @@ ELF_CREATEIMAGE = $(DIR_BUILD)/$(notdir $(SRC_CREATEIMAGE:.c=))
 # Top-level Rules
 # -----------------------------------------------------------------------
 
-all: dirs elf image asm # floppy
+all: dirs elf image extend_image asm # floppy
 
 dirs:
 	@mkdir -p $(DIR_BUILD)
@@ -200,5 +200,9 @@ $(ELF_CREATEIMAGE): $(SRC_CREATEIMAGE)
 
 image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
+
+extend_image:
+# 设置swap空间4MB，测试用
+	dd if=/dev/zero of=$(ELF_IMAGE) oflag=append conv=notrunc bs=4096KB count=1
 
 .PHONY: image

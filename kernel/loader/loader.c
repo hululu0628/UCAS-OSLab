@@ -28,10 +28,10 @@ uint64_t load_task(int taskid, uint64_t kaddr)
 	return 1;
 }
 
-uint64_t load_task_l(uint64_t kaddr, uint64_t id,uint64_t length)
+uint64_t load_task_l(uint64_t kaddr, uint64_t block_id,uint64_t length)
 {
 	if(length > 0 && length <= 64)
-		bios_sd_read(kaddr,length,id);
+		bios_sd_read(kaddr,length,block_id);
 	else
 		return -1;
 	return 1;

@@ -175,11 +175,16 @@ pid_t do_fork(void)
 {
 	int i;
 	int pid;
+	pageframe * t;
 	if((pid = alloc_proc()) == -1)
 		_panic("sched.c", 179, "do_fork");
 	
 	i = pid - 1;
-	pcb[i].pgdir = (PTE *)allocPgtabPage();
+
+	pcb[i].task_id = current_running->task_id;
+
+	t = allocPgtabPage();
+	pcb[i].pgdir = (PTE *)GET_KADDR(t->page_num);
 	uvmcopy(&pcb[i], current_running);
 
 	pcb[i].kernel_sp = KERNEL_STACK_ADDR - sizeof(switchto_context_t);
@@ -227,6 +232,8 @@ void do_exec(char *name, int argc, char **argv)
 	uint64_t kaddr;
 	if((task_id = find_task(kname)) != -1)
 	{
+		current_running->task_id = task_id;
+
 		page_number = 1 + (tasks[task_id].mem_size >> NORMAL_PAGE_SHIFT);
 
 		block_id = tasks[task_id].block_id;
@@ -248,7 +255,7 @@ void do_exec(char *name, int argc, char **argv)
 
 		// allocate one page for user_stack
 		kusr_stack = alloc_page_helper(USER_STACK_ADDR - PAGE_SIZE, pgdir, 
-			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER) + PAGE_SIZE;
+			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY | _PAGE_USER) + PAGE_SIZE;
 
 
 		ptr_t argv_base,kustack_start;
@@ -311,6 +318,7 @@ pid_t do_exec(char *name, int argc, char **argv)
 void do_exit(void)
 {
 	current_running->status = TASK_ZOMBIE;
+	current_running->task_id = -1;
 	freeQueueToReady(&current_running->wait_list);
 	reparent(&pcb[0], current_running);
 	wakeup(current_running->parent);
@@ -381,6 +389,7 @@ void wakeup(pcb_t *pcb)
 int alloc_proc()
 {
 	int i;
+	pageframe * t;
 	for(i = 0; i < NUM_MAX_TASK; i++)
 	{
 		if(pcb[i].status == TASK_EXITED)
@@ -388,7 +397,8 @@ int alloc_proc()
 			pcb[i].pid = i + 1;
 			pcb[i].core_mask = current_running->core_mask;
 			pcb[i].current_core_id = NO_CORE;
-			pcb[i].pgdir = (PTE *)allocPgtabPage();
+			t = allocPgtabPage();
+			pcb[i].pgdir = (PTE *)GET_KADDR(t->page_num);
 			return i + 1;
 		}
 	}

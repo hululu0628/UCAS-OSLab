@@ -65,6 +65,8 @@ static inline void set_satp(
 #define _PAGE_DIRTY (1 << 7)    /* Set by hardware on any write */
 #define _PAGE_SOFT (1 << 8)     /* Reserved for software */
 
+#define TOTAL_FLAG_MASK ((1 << 9) - 1)
+
 #define _PAGE_PFN_SHIFT 10lu
 
 #define VA_MASK ((1lu << 39) - 1)
@@ -114,10 +116,20 @@ static inline long get_attribute(PTE entry, uint64_t mask)
 	/* TODO: [P4-task1] */
 	return entry & mask;
 }
-static inline void set_attribute(PTE *entry, uint64_t bits)
+static inline void change_attribute(PTE *entry, uint64_t bits)
 {
 	/* TODO: [P4-task1] */
 	*entry = (*entry & 0xfffffffffffffc00lu) | bits;	// clear last 10 bits, then set attribute
+}
+static inline void set_attribute(PTE *entry, uint64_t bits)
+{
+	/* TODO: [P4-task1] */
+	*entry |= bits;
+}
+static inline void clear_attribute(PTE *entry, uint64_t bits)
+{
+	/* TODO: [P4-task1] */
+	*entry &= ~bits;
 }
 
 static inline void clear_pgdir(uintptr_t pgdir_addr)

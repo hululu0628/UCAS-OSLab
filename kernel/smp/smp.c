@@ -16,6 +16,7 @@ spin_lock_t slock;
 void init_pcb0(int cpuid)
 {
 	pid0_pcb[cpuid].pid = 0;
+	pid0_pcb[cpuid].task_id = -1;
 	pid0_pcb[cpuid].kernel_sp = INIT_KERNEL_STACK + 2 * (1 + cpuid) * PAGE_SIZE;
 	pid0_pcb[cpuid].core_mask = 1 << cpuid;
 	pid0_pcb[cpuid].pgdir = (PTE *)pa2kva(PGDIR_PA);

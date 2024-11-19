@@ -1,4 +1,3 @@
-#include "os/sched.h"
 #include <pgtable.h>
 #include <os/mm.h>
 #include <os/string.h>
@@ -50,38 +49,47 @@ void init_page()
 
 // 0x51000000~0x52000000 for page directory
 // some pages were allocated for kernel page directory
-ptr_t allocPgtabPage()
+pageframe * allocPgtabPage()
 {
 	pageframe * t;
 	t = free_list_pgtab;
 	if(t)
+	{
 		free_list_pgtab = free_list_pgtab->next;
-	t->next = NULL;
-	return GET_KADDR(t->page_num);
+		t->next = NULL;
+	}
+	return t;
 }
 
 // 0x52000000~0x60000000 for dynamic allocation
 // some pages were allocated for kernel satck
-ptr_t allocDynPage()
+pageframe * allocDynPage()
 {
 	pageframe * t;
 	t = free_list_proc;
 	if(t)
+	{
 		free_list_proc = free_list_proc->next;
-	t->next = NULL;
-	return GET_KADDR(t->page_num);
+		t->next = NULL;
+		printl("page address %lx\n",GET_KADDR(t->page_num));
+	}
+	return t;
 }
 
 // free a page (for dynamic or page directory)
 void freePage(ptr_t baseAddr)
 {
 	// TODO [P4-task1] (design you 'freePage' here if you need):
-	uint64_t i = kva2pa(baseAddr) - 0x50000000;
+	if(!baseAddr)
+		assert(0);
+	uint64_t i = (kva2pa(baseAddr) - 0x50000000) >> NORMAL_PAGE_SHIFT;
 	if(i >= PGTAB_START && i <= DYNAMIC_START)
 	{
 		pages[i].next = free_list_pgtab;
+		pages[i].flags = 0;
+		pages[i].pte = NULL;
 		free_list_pgtab = &pages[i];
-
+		printl("Free %lx\n",baseAddr);
 		// for a page directory, 
 		// clear the content when tries to free
 		clear_pgdir(baseAddr);
@@ -89,7 +97,11 @@ void freePage(ptr_t baseAddr)
 	else if(i >= DYNAMIC_START && i <= PAGE_NUM)
 	{
 		pages[i].next = free_list_proc;
+		pages[i].flags = 0;
+		pages[i].pte = NULL;
 		free_list_proc = &pages[i];
+
+		printl("Free %lx\n",baseAddr);
 	}
 }
 
@@ -118,32 +130,60 @@ void share_pgtable(uintptr_t dest_pgdir, uintptr_t src_pgdir)
 uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 {
 	// TODO [P4-task1] alloc_page_helper:
+	uintptr_t kaddr;
+	pageframe * t;
 	va &= VA_MASK;
 	uint64_t vpn2 = va >> (NORMAL_PAGE_SHIFT + PPN_BITS + PPN_BITS);
 	uint64_t vpn1 = (vpn2 << PPN_BITS) ^ (va >> (NORMAL_PAGE_SHIFT + PPN_BITS));
 	uint64_t vpn0 = ((va >> NORMAL_PAGE_SHIFT) ^ 
 			(vpn2 << (PPN_BITS + PPN_BITS))) ^ 
 			(vpn1 << PPN_BITS);
-	if(pgdir[vpn2] == 0)
+	if((pgdir[vpn2] & _PAGE_PRESENT) == 0)
 	{
-		set_pfn(&pgdir[vpn2], kva2pa(allocPgtabPage()) >> NORMAL_PAGE_SHIFT);
-		set_attribute(&pgdir[vpn2], _PAGE_PRESENT);
+		t = allocPgtabPage();
+		if(!t)
+			return 0;
+
+		kaddr = GET_KADDR(t->page_num);
+		set_pfn(&pgdir[vpn2], kva2pa(kaddr) >> NORMAL_PAGE_SHIFT);
+		change_attribute(&pgdir[vpn2], _PAGE_PRESENT);
+
+		t->pte = &pgdir[vpn2];
+		t->flags |= UNFREE_FLAG;
 	}
 
 	PTE * pmd = (PTE *)pa2kva(get_pa(pgdir[vpn2]));
-	if(pmd[vpn1] == 0)
+	if((pmd[vpn1] & _PAGE_PRESENT) == 0)
 	{
-		set_pfn(&pmd[vpn1], kva2pa(allocPgtabPage()) >> NORMAL_PAGE_SHIFT);
-		set_attribute(&pmd[vpn1], _PAGE_PRESENT);
+		t = allocPgtabPage();
+		if(!t)
+			return 0;
+
+		kaddr = GET_KADDR(t->page_num);
+		set_pfn(&pmd[vpn1], kva2pa(kaddr) >> NORMAL_PAGE_SHIFT);
+		change_attribute(&pmd[vpn1], _PAGE_PRESENT);
+
+		t->pte = &pmd[vpn1];
+		t->flags |= UNFREE_FLAG;
 	}
 
 	PTE * pt = (PTE *)pa2kva(get_pa(pmd[vpn1]));
 
-	if(pt[vpn0] == 0)
+	// 当前页不存在于物理内存中，分配
+	// 页框的pte和flag都在此设置完成
+	// 页表项的pfn和flag都在此设置完成
+	if((pt[vpn0] & _PAGE_PRESENT) == 0)
 	{
-		uintptr_t kaddr = allocDynPage();
+		t = allocDynPage();
+		if(!t)
+			return 0;
+
+		kaddr = GET_KADDR(t->page_num);
 		set_pfn(&pt[vpn0], kva2pa(kaddr) >> NORMAL_PAGE_SHIFT);
-		set_attribute(&pt[vpn0], bits);
+		change_attribute(&pt[vpn0], bits);
+
+		t->pte = &pt[vpn0];
+		t->flags |= bits;
 
 		return kaddr;
 	}
@@ -170,51 +210,56 @@ uint64_t get_kaddr(uint64_t va, PTE *pgdir, int level)
 	if(level == 0)
 		return (uint64_t)(pgdir + vpn2);
 	
-	if(pgdir[vpn2] == 0)
+	if(!(pgdir[vpn2] & _PAGE_PRESENT))
 		return 0;
 	pmd = (PTE *)pa2kva(get_pa(pgdir[vpn2]));
 
 	if(level == 1)
 		return (uint64_t)(pmd + vpn1);
 
-	if(pmd[vpn1] == 0)
+	if(!(pmd[vpn1] & _PAGE_PRESENT))
 		return 0;
 	pt = (PTE *)pa2kva(get_pa(pmd[vpn1]));
 
 	if(level == 2)
 		return (uint64_t)(pt + vpn0);
 
-	if(pt[vpn0] == 0)
+	if(!(pt[vpn0] & _PAGE_PRESENT))
 		return 0;
 	return pa2kva(get_pa(pt[vpn0])) + (va & (NORMAL_PAGE_SIZE - 1));
 
 }
 
 // copy data/text, user stack; init kernel stack
+// 如果copy的对象页不全在内存中怎么办
 int uvmcopy(pcb_t * dest_pcb, pcb_t * src_pcb)
 {
 	int i;
 	uint64_t kaddr;
+	uint64_t bits;
 	share_pgtable((uintptr_t)dest_pcb->pgdir, pa2kva(PGDIR_PA));
+	// 复制数据和代码段
 	for(i = 0; i < src_pcb->dt_size; i += PAGE_SIZE)
 	{
-		kaddr = alloc_page_helper(USER_ENTRYPOINT + i, dest_pcb->pgdir, _PAGE_PRESENT 
-				| _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_USER);
+		bits = get_attribute(*((PTE *)get_kaddr(USER_ENTRYPOINT + i, src_pcb->pgdir, 2)), TOTAL_FLAG_MASK);
+		kaddr = alloc_page_helper(USER_ENTRYPOINT + i, dest_pcb->pgdir, bits);
 		memcpy((uint8_t *)kaddr, 
 			(const uint8_t *)get_kaddr(USER_ENTRYPOINT + i, src_pcb->pgdir, 3), PAGE_SIZE);
 	}
+	// 复制用户栈
 	for(i = 0; i < src_pcb->us_size; i += PAGE_SIZE)
 	{
 		kaddr = alloc_page_helper(USER_STACK_ADDR - i - PAGE_SIZE, dest_pcb->pgdir, 
-				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER);
+				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_DIRTY | _PAGE_USER);
 		memcpy((uint8_t *)kaddr, 
 			(const uint8_t *)get_kaddr(USER_STACK_ADDR - i - PAGE_SIZE, src_pcb->pgdir, 3), PAGE_SIZE);
 
 	}
+	// 分配内核栈并清零
 	for(i = 0; i < src_pcb->ks_size; i += PAGE_SIZE)
 	{
 		kaddr = alloc_page_helper(KERNEL_STACK_ADDR - i - PAGE_SIZE, dest_pcb->pgdir, 
-				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE);
+				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY);
 		bzero((uint8_t *)kaddr, PAGE_SIZE);
 
 	}
