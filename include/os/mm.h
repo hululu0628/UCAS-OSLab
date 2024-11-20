@@ -28,13 +28,13 @@
 
 #include <type.h>
 #include <pgtable.h>
-#include <os/sched.h>
+#include <os/proc.h>
 
 #define MAP_KERNEL 1
 #define MAP_USER 2
 #define MEM_SIZE 32
 #define PAGE_SIZE 4096 // 4K
-#define PAGE_NUM ((0x52011000 - 0x50000000) >> NORMAL_PAGE_SHIFT)	// for debugging
+#define PAGE_NUM ((0x60000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)	// for debugging
 #define PGTAB_START ((0x51000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
 #define DYNAMIC_START ((0x52000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
 #define GET_KADDR(num) (((uint64_t)num << NORMAL_PAGE_SHIFT) + 0xffffffc050000000)

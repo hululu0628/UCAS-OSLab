@@ -1,5 +1,5 @@
 #include <os/list.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <type.h>
 
 uint64_t time_elapsed = 0;

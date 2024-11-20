@@ -37,6 +37,8 @@
 
 #define NUM_MAX_TASK 16
 
+#define NUM_MAX_PROC 16
+
 #define FIND_PCB(name) ((pcb_t *)(name->pcb_ptr))	// find pcb
 
 /* used to save register infomation */
@@ -81,8 +83,6 @@ typedef struct pcb
 	// NOTE: this order must be preserved, which is defined in regs.h!!
 	reg_t kernel_sp;
 	reg_t user_sp;
-	ptr_t kernel_stack_base;
-	ptr_t user_stack_base;
 
 	/* previous, next pointer, pcb pointer */
 	list_node_t list;
@@ -135,7 +135,7 @@ extern list_head wait_queue;
 register pcb_t * current_running asm("tp");
 extern pid_t process_id[CPU_NUM];
 
-extern pcb_t pcb[NUM_MAX_TASK]; 	// pid from 1 to 16
+extern pcb_t pcb[NUM_MAX_PROC]; 	// pid from 1 to 16
 extern pcb_t pid0_pcb[CPU_NUM];
 
 extern void switch_to(pcb_t *prev, pcb_t *next);

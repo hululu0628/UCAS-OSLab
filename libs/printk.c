@@ -42,7 +42,7 @@
  */
 #include <screen.h>
 #include <stdarg.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/irq.h>
 #include <os/kernel.h>
 

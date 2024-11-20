@@ -162,7 +162,7 @@ ENTRY(switch_to)
 	addi 	sp, sp, -(SWITCH_TO_SIZE)
 
 	/* TODO: [p2-task1] save all callee save registers on kernel stack,
-	* see the definition of `struct switchto_context` in sched.h*/
+	* see the definition of `struct switchto_context` in proc.h*/
 	sd 	ra,SWITCH_TO_RA(sp)	# for user process, ra points to do_scheduler
 					# (do_scheduler->handler->inter_helper->ret_from_trap)
 
@@ -192,7 +192,7 @@ ENTRY(switch_to)
 	ld 	sp,PCB_KERNEL_SP(a0)	# switch to next pcb's kernel sp
 
 	/* TODO: [p2-task1] restore all callee save registers from kernel stack,
-	* see the definition of `struct switchto_context` in sched.h*/
+	* see the definition of `struct switchto_context` in proc.h*/
 	ld	s11,SWITCH_TO_S11(sp)
 	ld 	s10,SWITCH_TO_S10(sp)
 	ld 	s9,SWITCH_TO_S9(sp)

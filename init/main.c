@@ -15,7 +15,7 @@
 #include <os/string.h>
 #include <os/time.h>
 #include <os/irq.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/list.h>
 #include <os/lock.h>
 #include <os/smp.h>
@@ -143,7 +143,7 @@ static void init_pcb(void)
 	/* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
 	int i;
 	// initialize pcb array (for user)
-	for(i = 0; i < NUM_MAX_TASK; i++)
+	for(i = 0; i < NUM_MAX_PROC; i++)
 	{
 		pcb[i].pid = i + 1;
 		pcb[i].list.prev = NULL;

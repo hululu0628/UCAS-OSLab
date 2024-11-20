@@ -1,7 +1,7 @@
 #include <os/pgfault.h>
 #include <os/irq.h>
 #include <os/time.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/string.h>
 #include <os/kernel.h>
 #include <printk.h>

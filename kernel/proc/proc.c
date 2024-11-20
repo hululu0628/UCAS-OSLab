@@ -10,7 +10,7 @@
 #include <os/kernel.h>
 #include <os/list.h>
 #include <os/lock.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/time.h>
 #include <os/mm.h>
 #include <screen.h>
@@ -19,7 +19,7 @@
 
 // sched.c, or proc.c
 
-pcb_t pcb[NUM_MAX_TASK];
+pcb_t pcb[NUM_MAX_PROC];
 pcb_t pid0_pcb[CPU_NUM];
 
 LIST_HEAD(ready_queue);
@@ -134,7 +134,7 @@ void do_process_show()
 	int i;
 	int j = 0;
 	int has_process = 0;
-	for(i = 0; i < NUM_MAX_TASK; i++)
+	for(i = 0; i < NUM_MAX_PROC; i++)
 	{
 		if(pcb[i].status != TASK_EXITED)
 		{
@@ -296,7 +296,7 @@ pid_t do_exec(char *name, int argc, char **argv)
 {
 	int i;
 	pid_t pid = -1;
-	for(i = 0; i < NUM_MAX_TASK; i++)
+	for(i = 0; i < NUM_MAX_PROC; i++)
 	{
 		if(pcb[i].status == TASK_EXITED)
 		{		
@@ -355,7 +355,7 @@ int do_wait(int * status)
 	int i;
 	while(1)
 	{
-		for(i = 0; i < NUM_MAX_TASK; i++)
+		for(i = 0; i < NUM_MAX_PROC; i++)
 		{
 			if(pcb[i].parent == current_running && pcb[i].status == TASK_ZOMBIE)
 			{
@@ -370,7 +370,7 @@ int do_wait(int * status)
 
 int do_waitpid(pid_t pid)
 {
-	if(pid > 0 && pid <= NUM_MAX_TASK)
+	if(pid > 0 && pid <= NUM_MAX_PROC)
 	{
 		if(pcb[pid - 1].status != TASK_EXITED)
 		{
@@ -390,7 +390,7 @@ int alloc_proc()
 {
 	int i;
 	pageframe * t;
-	for(i = 0; i < NUM_MAX_TASK; i++)
+	for(i = 0; i < NUM_MAX_PROC; i++)
 	{
 		if(pcb[i].status == TASK_EXITED)
 		{

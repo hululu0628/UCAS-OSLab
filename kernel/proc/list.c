@@ -1,5 +1,5 @@
 #include <os/list.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <printk.h>
 void addToQueue(list_node_t * listnode, list_head * queue)
 {
@@ -27,7 +27,7 @@ void deleteNode(list_node_t * listnode)
 void allocReadyProcess()
 {
 	int i;
-	for(i=0; i < NUM_MAX_TASK; i++)
+	for(i=0; i < NUM_MAX_PROC; i++)
 	{
 		if(pcb[i].status == TASK_READY)
 			addToQueue(&pcb[i].list,&ready_queue);

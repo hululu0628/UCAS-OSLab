@@ -28,7 +28,7 @@
 #define INCLUDE_INTERRUPT_H_
 
 #include <type.h>
-#include <os/sched.h>
+#include <os/proc.h>
 
 
 #define INTERRUPT 0x8000000000000000

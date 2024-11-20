@@ -2,7 +2,7 @@
 #include <os/swap.h>
 #include <os/task.h>
 #include <os/mm.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/pgfault.h>
 #include <pgtable.h>
 #include <assert.h>

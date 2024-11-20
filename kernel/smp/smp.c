@@ -1,7 +1,7 @@
 #include <os/mm.h>
 #include <pgtable.h>
 #include <atomic.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/smp.h>
 #include <os/lock.h>
 #include <os/kernel.h>

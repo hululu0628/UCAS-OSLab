@@ -1,5 +1,5 @@
 #include <os/lock.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/list.h>
 #include <os/string.h>
 #include <atomic.h>

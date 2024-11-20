@@ -1,5 +1,5 @@
 #include <os/smp.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <pgtable.h>
 #include <os/kernel.h>
 #include <os/swap.h>
