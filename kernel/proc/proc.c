@@ -20,7 +20,9 @@
 // sched.c, or proc.c
 
 pcb_t pcb[NUM_MAX_PROC];
+tcb_t tcb[NUM_MAX_THREAD];
 pcb_t pid0_pcb[CPU_NUM];
+tcb_t pid0_tcb[CPU_NUM];
 
 LIST_HEAD(ready_queue);
 LIST_HEAD(sleep_queue);
@@ -28,6 +30,7 @@ LIST_HEAD(wait_queue);
 
 /* global process id */
 pid_t process_id[CPU_NUM];
+tid_t thread_id[CPU_NUM];
 
 PTE * get_pgdir(pcb_t * pcb)
 {
@@ -45,14 +48,14 @@ void do_scheduler(void)
 
 	// TODO: [p2-task1] Modify the current_running pointer.
 	int current_cpuid = get_current_cpu_id();
-	pcb_t * prev_process = current_running;
+	tcb_t * prev_thread = current_running;
 	list_head * queue;
 	if(current_running->status == TASK_RUNNING)
 	{
 		current_running->status = TASK_READY;
 
 		// Round Robin
-		if(current_running != &pid0_pcb[current_cpuid])
+		if(current_running != &pid0_tcb[current_cpuid])
 		{
 			addToQueue(&current_running->list, &ready_queue);
 		}
@@ -64,14 +67,14 @@ void do_scheduler(void)
 	queue = &ready_queue;
 	while(1)
 	{
-		current_running = (pcb_t *)getReadyProcess(queue);
+		current_running = (tcb_t *)getReadyProcess(queue);
 		// printl("0x%x core: %d pid: %d\n",current_running,current_cpuid,process_id[current_cpuid]);
 		if(current_running->core_mask & (1 << current_cpuid))
 			break;
 		queue = queue->next;
 		if(queue->next == &ready_queue)
 		{
-			current_running = &pid0_pcb[current_cpuid];
+			current_running = &pid0_tcb[current_cpuid];
 			break;
 		}
 	}
@@ -79,6 +82,7 @@ void do_scheduler(void)
 	current_running->current_core_id = current_cpuid;
 
 	process_id[current_cpuid] = current_running->pid;
+	thread_id[current_cpuid] = current_running->tid;
 	current_running->status = TASK_RUNNING;
 	if(process_id[current_cpuid] != 0)
 		deleteNode(&current_running->list);
@@ -86,7 +90,11 @@ void do_scheduler(void)
 	bios_set_timer(get_ticks() + TIMER_INTERVAL);	// set timer interrupt
 
 	// TODO: [p2-task1] switch_to current_running
-	switch_to(prev_process,current_running);
+	if(prev_thread->pid == current_running->pid)
+		switch_thread(prev_thread, current_running);
+	else
+		switch_proc(prev_thread,current_running,
+			&pcb[prev_thread->pid - 1],&pcb[current_running->pid - 1]);
 }
 
 void do_sleep(uint32_t sleep_time)
@@ -96,7 +104,7 @@ void do_sleep(uint32_t sleep_time)
 	// 1. block the current_running
 	// 2. set the wake up time for the blocked task
 	// 3. reschedule because the current_running is blocked.
-	if(current_running != &pid0_pcb[get_current_cpu_id()])
+	if(current_running != &pid0_tcb[get_current_cpu_id()])
 	{
 		current_running->status = TASK_BLOCKED;
 		current_running->wakeup_time = get_timer() + sleep_time;
@@ -110,23 +118,23 @@ void do_sleep(uint32_t sleep_time)
 
 }
 
-void do_block(list_node_t *pcb_node, list_head *queue)
+void do_block(list_node_t *tcb_node, list_head *queue)
 {
 	// TODO: [p2-task2] block the pcb task into the block queue
 	current_running->status = TASK_BLOCKED;
-	if(current_running != &pid0_pcb[get_current_cpu_id()])
-		addToQueue(pcb_node, queue);
+	if(current_running != &pid0_tcb[get_current_cpu_id()])
+		addToQueue(tcb_node, queue);
 
 	do_scheduler();
 }
 
-void do_unblock(list_node_t *pcb_node)
+void do_unblock(list_node_t *tcb_node)
 {
 	// TODO: [p2-task2] unblock the `pcb` from the block queue
-	pcb_t * pcb_unblock = FIND_PCB(pcb_node);
-	deleteNode(pcb_node);
-	pcb_unblock->status = TASK_READY;
-	addToQueue(pcb_node, &ready_queue);
+	tcb_t * tcb_unblock = FIND_TCB(tcb_node);
+	deleteNode(tcb_node);
+	tcb_unblock->status = TASK_READY;
+	addToQueue(tcb_node, &ready_queue);
 }
 
 void do_process_show()
@@ -134,35 +142,37 @@ void do_process_show()
 	int i;
 	int j = 0;
 	int has_process = 0;
-	for(i = 0; i < NUM_MAX_PROC; i++)
+	for(i = 0; i < NUM_MAX_THREAD; i++)
 	{
-		if(pcb[i].status != TASK_EXITED)
+		if(tcb[i].status != TASK_EXITED)
 		{
 			if(has_process == 0)
 			{
 				printk("[Process Table]:\n");
 				has_process = 1;
 			}
-			printk("[%d] PID: %d ",j,pcb[i].pid);
+			printk("[%d] PID: %d ",j,tcb[i].pid);
+			printk("[%d] TID: %d ",j,tcb[i].tid);
 			j++;
-			if(pcb[i].status == TASK_RUNNING)
+			if(tcb[i].status == TASK_RUNNING)
 				printk("STATUS: %s ","TASK_RUNNING");
-			else if(pcb[i].status == TASK_BLOCKED)
+			else if(tcb[i].status == TASK_BLOCKED)
 				printk("STATUS: %s ","TASK_BLOCKED");
-			else if(pcb[i].status == TASK_READY)
+			else if(tcb[i].status == TASK_READY)
 				printk("STATUS: %s ","TASK_READY");
 
-			printk("MASK: 0x%x",pcb[i].core_mask);
+			printk("MASK: 0x%x",tcb[i].core_mask);
 
-			if(pcb[i].current_core_id == NO_CORE)
+			if(tcb[i].current_core_id == NO_CORE)
 				printk("\n");
 			else
-				printk(" Core: %d\n",pcb[i].current_core_id);
+				printk(" Core: %d\n",tcb[i].current_core_id);
 		}
 	}
 	if(has_process == 0)
 	{
-		printk("Huh? There is no process?");
+		printl("Huh? There is no process?");
+		assert(0);
 	}
 }
 
@@ -174,54 +184,76 @@ pid_t do_getpid()
 pid_t do_fork(void)
 {
 	int i;
-	int pid;
+	int tid,pid;
 	pageframe * t;
-	if((pid = alloc_proc()) == -1)
+	if((tid = alloc_proc()) == -1)
 		_panic("sched.c", 179, "do_fork");
 	
-	i = pid - 1;
+	i = tid - 1;
+	pid = tcb[tid - 1].pid;
 
-	pcb[i].task_id = current_running->task_id;
+	pcb[pid - 1].task_id = pcb[current_running->pid - 1].task_id;
 
 	t = allocPgtabPage();
-	pcb[i].pgdir = (PTE *)GET_KADDR(t->page_num);
-	uvmcopy(&pcb[i], current_running);
+	pcb[pid - 1].pgdir = (PTE *)GET_KADDR(t->page_num);
+	uvmcopy(&tcb[i], current_running);
 
-	pcb[i].kernel_sp = KERNEL_STACK_ADDR - sizeof(switchto_context_t);
+	tcb[i].kernel_sp = KERNEL_STACK_ADDR - sizeof(switchto_context_t);
+	tcb[i].kernel_stack_base = KERNEL_STACK_ADDR;
+	tcb[i].user_stack_base = USER_STACK_ADDR;
 
-	init_switch_to(PAGE_SIZE + get_kaddr(KERNEL_STACK_ADDR - PAGE_SIZE, pcb[i].pgdir, 3), &pcb[i]);
+	init_switch_to(PAGE_SIZE + get_kaddr(KERNEL_STACK_ADDR - PAGE_SIZE, pcb[pid - 1].pgdir, 3), &tcb[i]);
 
-	pcb[i].dt_size = current_running->dt_size;
-	pcb[i].us_size = current_running->us_size;
-	pcb[i].ks_size = current_running->ks_size;
+	tcb[i].dt_size = current_running->dt_size;
+	tcb[i].us_size = current_running->us_size;
+	tcb[i].ks_size = current_running->ks_size;
+	pcb[pid - 1].dt_size = tcb[i].dt_size;
 
-	pcb[i].trapframe = current_running->trapframe;
-	pcb[i].trapframe.regs[A0] = 0;
-	pcb[i].trapframe.regs[TP] = (reg_t)&pcb[i];
 
-	pcb[i].parent = current_running;
+	tcb[i].trapframe = current_running->trapframe;
+	tcb[i].trapframe.regs[A0] = 0;
+	tcb[i].trapframe.regs[TP] = (reg_t)&tcb[i];
 
-	pcb[i].status = TASK_READY;
-	addToQueue(&pcb[i].list,&ready_queue);
+	pcb[pid - 1].parent = &pcb[current_running->pid - 1];
+
+	tcb[i].status = TASK_READY;
+	addToQueue(&tcb[i].list,&ready_queue);
 
 	return pid;
 }
 
 void do_exec(char *name, int argc, char **argv)
 {
+	int i;
+	int pid;
+	pid = current_running->pid;
+
 	int kargc = argc;
 	char args_buf[10][20];		// shell的最大允许参数
 	char * kname = args_buf[0];
-	for(int i = 0; i < kargc; i++)
+	for(i = 0; i < kargc; i++)
 	{
 		strcpy(args_buf[i], argv[i]);
 	}
 
-	PTE * pgdir = current_running->pgdir;
-	uvmfree_seg(DATA_AND_TEXT_SEG, current_running->dt_size, pgdir);
-	uvmumap_seg(DATA_AND_TEXT_SEG, current_running->dt_size, pgdir);
-	uvmfree_seg(USER_STACK_SEG, current_running->us_size, pgdir);
-	uvmumap_seg(USER_STACK_SEG, current_running->us_size, pgdir);
+	PTE * pgdir = pcb[current_running->pid - 1].pgdir;
+	uvmfree_seg(DATA_AND_TEXT_SEG, current_running, pgdir);
+	uvmumap_seg(DATA_AND_TEXT_SEG, current_running, pgdir);
+	for(i = 0; i < NUM_MAX_THREAD; i++)
+	{
+		if(tcb[i].pid == current_running->pid)
+		{
+			uvmfree_seg(USER_STACK_SEG, current_running, pgdir);
+			uvmumap_seg(USER_STACK_SEG, current_running, pgdir);
+		}
+		if(&tcb[i] != current_running)
+		{
+			uvmfree_seg(KERNEL_STACK_SEG, current_running, pgdir);
+			uvmumap_seg(KERNEL_STACK_SEG, current_running, pgdir);
+		}
+	}
+	pcb[pid - 1].tcb_num = 1;
+
 
 
 	ptr_t kusr_stack;
@@ -230,9 +262,10 @@ void do_exec(char *name, int argc, char **argv)
 	int block_num;
 	int page_number;
 	uint64_t kaddr;
+
 	if((task_id = find_task(kname)) != -1)
 	{
-		current_running->task_id = task_id;
+		pcb[pid - 1].task_id = task_id;
 
 		page_number = 1 + (tasks[task_id].mem_size >> NORMAL_PAGE_SHIFT);
 
@@ -285,6 +318,8 @@ void do_exec(char *name, int argc, char **argv)
 		current_running->ks_size = PAGE_SIZE;
 		current_running->us_size = PAGE_SIZE;
 
+		current_running->user_stack_base = USER_STACK_ADDR;
+
 		// modified third level page table,
 		// therefore the tlb must be reflushed
 		local_flush_tlb_all();
@@ -317,20 +352,24 @@ pid_t do_exec(char *name, int argc, char **argv)
 // 回收内存
 void do_exit(void)
 {
-	current_running->status = TASK_ZOMBIE;
-	current_running->task_id = -1;
-	freeQueueToReady(&current_running->wait_list);
-	reparent(&pcb[0], current_running);
-	wakeup(current_running->parent);
+	int pid = current_running->pid;
+	do_kill(pid);
 	do_scheduler();
 }
 
 int do_kill(pid_t pid)
 {
-	if(pcb[pid - 1].status != TASK_EXITED && pcb[pid - 1].status != TASK_ZOMBIE)
+	if(pcb[pid - 1].task_id != NO_TASK)
 	{
-		deleteNode(&pcb[pid - 1].list);
-		pcb[pid - 1].status = TASK_ZOMBIE;
+		pcb[pid - 1].task_id = NO_TASK;
+		for(int i = 0; i < NUM_MAX_THREAD; i++)
+		{
+			if(tcb[i].pid == pid)
+			{
+				deleteNode(&tcb[i].list);
+				tcb[i].status = TASK_ZOMBIE;			
+			}
+		}
 		freeQueueToReady(&pcb[pid - 1].wait_list);
 		// 多把锁
 		for(int i = 0; i < LOCK_NUM; i++)
@@ -345,7 +384,7 @@ int do_kill(pid_t pid)
 		}
 
 		reparent(&pcb[0], &pcb[pid - 1]);
-		wakeup(current_running->parent);
+		wakeup(pcb[pid - 1].parent);
 	}
 	return 0;
 }
@@ -353,11 +392,12 @@ int do_kill(pid_t pid)
 int do_wait(int * status)
 {
 	int i;
+	int pid = current_running->pid;
 	while(1)
 	{
 		for(i = 0; i < NUM_MAX_PROC; i++)
 		{
-			if(pcb[i].parent == current_running && pcb[i].status == TASK_ZOMBIE)
+			if(pcb[i].parent == &pcb[pid - 1] && pcb[i].task_id == NO_TASK)
 			{
 				free_proc(&pcb[i]);
 				return i + 1;
@@ -370,36 +410,51 @@ int do_wait(int * status)
 
 int do_waitpid(pid_t pid)
 {
-	if(pid > 0 && pid <= NUM_MAX_PROC)
-	{
-		if(pcb[pid - 1].status != TASK_EXITED)
-		{
-			do_block(&current_running->list, &pcb[pid - 1].wait_list);
-			return pid;
-		}
-	}
+	while(1);
 	return 0;
 }
 
 void wakeup(pcb_t *pcb)
 {
-	do_unblock(&pcb->list);
+	int pid = pcb->pid;
+	for(int i = 0; i < NUM_MAX_THREAD; i++)
+	{
+		if(tcb[i].pid == pid && tcb[i].status == TASK_BLOCKED)
+			do_unblock(&tcb[i].list);
+	}
 }
 
 int alloc_proc()
 {
 	int i;
+	int pid = 0;
+	int tid;
 	pageframe * t;
 	for(i = 0; i < NUM_MAX_PROC; i++)
 	{
-		if(pcb[i].status == TASK_EXITED)
+		if(pcb[i].tcb_num == 0)
 		{
 			pcb[i].pid = i + 1;
-			pcb[i].core_mask = current_running->core_mask;
-			pcb[i].current_core_id = NO_CORE;
+			pid = i + 1;
 			t = allocPgtabPage();
 			pcb[i].pgdir = (PTE *)GET_KADDR(t->page_num);
-			return i + 1;
+			break;
+		}
+	}
+	if(pid == 0)
+		return -1;
+	for(i = 0; i < NUM_MAX_THREAD; i++)
+	{
+		if(tcb[i].status == TASK_EXITED)
+		{
+			pcb[pid - 1].tcb_num += 1;
+
+			tcb[i].tid = i + 1;
+			tcb[i].core_mask = current_running->core_mask;
+			tcb[i].current_core_id = NO_CORE;
+			tcb[i].pid = pid;
+			tid = i + 1;
+			return tid;
 		}
 	}
 	return -1;
@@ -407,14 +462,26 @@ int alloc_proc()
 
 void free_proc(pcb_t *pcb)
 {
-	uvmfree_seg(DATA_AND_TEXT_SEG, pcb->dt_size, pcb->pgdir);
-	uvmfree_seg(USER_STACK_SEG, pcb->us_size, pcb->pgdir);
-	uvmfree_seg(KERNEL_STACK_SEG, pcb->ks_size, pcb->pgdir);
+	int pid = pcb->pid;
+	int i,j;
+
+	for(i = 0; i < NUM_MAX_THREAD; i++)
+	{
+		if(tcb[i].pid == pid)
+		{
+			uvmfree_seg(USER_STACK_SEG, &tcb[i], pcb->pgdir);
+			uvmfree_seg(KERNEL_STACK_SEG, &tcb[i], pcb->pgdir);
+			tcb[i].status = TASK_EXITED;
+			j = i;
+		}
+	}
+	uvmfree_seg(DATA_AND_TEXT_SEG, &tcb[j], pcb->pgdir);
+	
 	
 	uvmfree_pgtable(pcb);
 
-	pcb->status = TASK_EXITED;
-	pcb->parent = 0;
+	pcb->parent = NULL;
+	pcb->tcb_num = 0;
 	pcb->pgdir = NULL;
 }
 
@@ -423,13 +490,13 @@ void reparent(pcb_t *parent, pcb_t *child)
 	child->parent = parent;
 }
 
-void init_switch_to(ptr_t kernel_stack, pcb_t * pcb)
+void init_switch_to(ptr_t kernel_stack, tcb_t * tcb)
 {
 	switchto_context_t *pt_switchto = (switchto_context_t *)((ptr_t)kernel_stack - sizeof(switchto_context_t));
 
 	// for user process, jump to entrypoint by using sret
 	pt_switchto->regs[0] = (reg_t)ret_from_trap;
-	pt_switchto->regs[1] = pcb->kernel_sp;
+	pt_switchto->regs[1] = tcb->kernel_sp;
 	pt_switchto->regs[2] = 0;
 	pt_switchto->regs[3] = 0;
 	pt_switchto->regs[4] = 0;
@@ -446,7 +513,7 @@ void init_switch_to(ptr_t kernel_stack, pcb_t * pcb)
 
 void init_pcb_stack(
     ptr_t kernel_stack, ptr_t kuser_stack, ptr_t entry_point,
-    pcb_t *pcb, int argc, char **argv)
+    tcb_t *tcb, int argc, char **argv)
 {
 	// P3, pass parameter to the user stack
 	ptr_t argv_base,kustack_start;
@@ -470,12 +537,12 @@ void init_pcb_stack(
 	*     of sstatus(SPP, SPIE, etc.).
 	*/
 	
-	pcb->trapframe.sstatus = SR_SPIE | SR_SUM;	// return U-mode(SPP == 0) and enable interrupt gloablly(SPIE == 1)
-	pcb->trapframe.sepc = entry_point;		// jump to entrypoint using sret
-	pcb->trapframe.regs[SP] = USER_STACK_ADDR - (kustack_start - kuser_stack);
-	pcb->trapframe.regs[TP] = (reg_t)pcb;
-	pcb->trapframe.regs[A0] = (reg_t)argc;
-	pcb->trapframe.regs[A1] = (reg_t)(USER_STACK_ADDR - (kustack_start - argv_base));
+	tcb->trapframe.sstatus = SR_SPIE | SR_SUM;	// return U-mode(SPP == 0) and enable interrupt gloablly(SPIE == 1)
+	tcb->trapframe.sepc = entry_point;		// jump to entrypoint using sret
+	tcb->trapframe.regs[SP] = USER_STACK_ADDR - (kustack_start - kuser_stack);
+	tcb->trapframe.regs[TP] = (reg_t)tcb;
+	tcb->trapframe.regs[A0] = (reg_t)argc;
+	tcb->trapframe.regs[A1] = (reg_t)(USER_STACK_ADDR - (kustack_start - argv_base));
 
 
 	/* TODO: [p2-task1] set sp to simulate just returning from switch_to
@@ -483,10 +550,13 @@ void init_pcb_stack(
 	* simulate a callee-saved context.
 	*/
 
-	pcb->kernel_sp = (reg_t)KERNEL_STACK_ADDR - sizeof(switchto_context_t);
+	tcb->kernel_sp = (reg_t)KERNEL_STACK_ADDR - sizeof(switchto_context_t);
+	tcb->kernel_stack_base = (reg_t)KERNEL_STACK_ADDR;
+
+	tcb->user_stack_base = USER_STACK_ADDR;
 
 	
-	init_switch_to(kernel_stack, pcb);
+	init_switch_to(kernel_stack, tcb);
 
 }
 

@@ -60,7 +60,7 @@
 	sd 	t3, OFFSET_CSR_SCAUSE(tp)
 
 
-	ld 	sp, PCB_KERNEL_SP(tp)
+	ld 	sp, TCB_KERNEL_SP(tp)
 
 .endm
 
@@ -68,7 +68,7 @@
 	/* TODO: Restore all general purpose registers and sepc, sstatus */
 	/* HINT: Pay attention to sp again! */
 
-	sd 	sp, PCB_KERNEL_SP(tp)
+	sd 	sp, TCB_KERNEL_SP(tp)
 
 	
 	ld  	t3, OFFSET_CSR_SCAUSE(tp)
@@ -157,7 +157,7 @@ ENDPROC(switch_pgtable)
 	// NOTE: the address of previous pcb in a0
 	// NOTE: the address of next pcb in a1
 	// process switch from a0 to a1
-ENTRY(switch_to)
+ENTRY(switch_proc)
 	// (╯▔皿▔)╯
 	addi 	sp, sp, -(SWITCH_TO_SIZE)
 
@@ -180,16 +180,18 @@ ENTRY(switch_to)
 	sd 	s10,SWITCH_TO_S10(sp)
 	sd	s11,SWITCH_TO_S11(sp)
 
-	sd 	sp,PCB_KERNEL_SP(a0)	# update kernel sp in prev pcb
+	sd 	sp,TCB_KERNEL_SP(a0)	# update kernel sp in prev pcb
 
-	mv 	a0,a1
-	mv 	s0,a1
+	mv 	a0,a3
+	mv 	s1,a1
+	mv	s2,a2
+	mv 	s3,a3
 	jal 	get_pgdir
 
 	jal	switch_pgtable
 
-	mv 	a0,s0
-	ld 	sp,PCB_KERNEL_SP(a0)	# switch to next pcb's kernel sp
+	mv 	a1,s1
+	ld 	sp,TCB_KERNEL_SP(a1)	# switch to next pcb's kernel sp
 
 	/* TODO: [p2-task1] restore all callee save registers from kernel stack,
 	* see the definition of `struct switchto_context` in proc.h*/
@@ -211,7 +213,57 @@ ENTRY(switch_to)
 	addi 	sp, sp, SWITCH_TO_SIZE
 
 	jr ra
-ENDPROC(switch_to)
+ENDPROC(switch_proc)
+
+ENTRY(switch_thread)
+	// (╯▔皿▔)╯
+	addi 	sp, sp, -(SWITCH_TO_SIZE)
+
+	/* TODO: [p2-task1] save all callee save registers on kernel stack,
+	* see the definition of `struct switchto_context` in proc.h*/
+	sd 	ra,SWITCH_TO_RA(sp)	# for user process, ra points to do_scheduler
+					# (do_scheduler->handler->inter_helper->ret_from_trap)
+
+	sd 	sp,SWITCH_TO_SP(sp)	# sp points to kernel-stack
+	sd 	s0,SWITCH_TO_S0(sp)
+	sd 	s1,SWITCH_TO_S1(sp)
+	sd 	s2,SWITCH_TO_S2(sp)
+	sd 	s3,SWITCH_TO_S3(sp)
+	sd	s4,SWITCH_TO_S4(sp)
+	sd 	s5,SWITCH_TO_S5(sp)
+	sd 	s6,SWITCH_TO_S6(sp)
+	sd 	s7,SWITCH_TO_S7(sp)
+	sd 	s8,SWITCH_TO_S8(sp)
+	sd 	s9,SWITCH_TO_S9(sp)
+	sd 	s10,SWITCH_TO_S10(sp)
+	sd	s11,SWITCH_TO_S11(sp)
+
+	sd 	sp,TCB_KERNEL_SP(a0)	# update kernel sp in prev pcb
+
+	ld 	sp,TCB_KERNEL_SP(a1)	# switch to next pcb's kernel sp
+
+	/* TODO: [p2-task1] restore all callee save registers from kernel stack,
+	* see the definition of `struct switchto_context` in proc.h*/
+	ld	s11,SWITCH_TO_S11(sp)
+	ld 	s10,SWITCH_TO_S10(sp)
+	ld 	s9,SWITCH_TO_S9(sp)
+	ld 	s8,SWITCH_TO_S8(sp)
+	ld 	s7,SWITCH_TO_S7(sp)
+	ld 	s6,SWITCH_TO_S6(sp)
+	ld 	s5,SWITCH_TO_S5(sp)
+	ld	s4,SWITCH_TO_S4(sp)
+	ld 	s3,SWITCH_TO_S3(sp)
+	ld 	s2,SWITCH_TO_S2(sp)
+	ld 	s1,SWITCH_TO_S1(sp)
+	ld 	s0,SWITCH_TO_S0(sp)
+	ld 	sp,SWITCH_TO_SP(sp)
+	ld 	ra,SWITCH_TO_RA(sp)
+
+	addi 	sp, sp, SWITCH_TO_SIZE
+
+	jr ra
+ENDPROC(switch_thread)
+
 
 ENTRY(ret_from_trap)
 	/* TODO: [p2-task3] restore context via provided macro and return to sepc */

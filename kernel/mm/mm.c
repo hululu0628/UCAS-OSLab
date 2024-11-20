@@ -1,3 +1,4 @@
+#include "os/proc.h"
 #include <pgtable.h>
 #include <os/mm.h>
 #include <os/string.h>
@@ -108,7 +109,7 @@ void freePage(ptr_t baseAddr)
 void *kmalloc(size_t size)
 {
 	// TODO [P4-task1] (design you 'kmalloc' here if you need):
-	//
+	return NULL;
 }
 
 
@@ -189,7 +190,7 @@ uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 	}
 	else
 		_panic("mm.c", 149, "alloc_page_helper");
-
+	return 0;
 }
 
 // level 3: page addr for va; 2: pt for va; 1: pmd for va; 0: pgd for va
@@ -232,33 +233,38 @@ uint64_t get_kaddr(uint64_t va, PTE *pgdir, int level)
 
 // copy data/text, user stack; init kernel stack
 // 如果copy的对象页不全在内存中怎么办
-int uvmcopy(pcb_t * dest_pcb, pcb_t * src_pcb)
+int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 {
 	int i;
 	uint64_t kaddr;
 	uint64_t bits;
-	share_pgtable((uintptr_t)dest_pcb->pgdir, pa2kva(PGDIR_PA));
+	PTE *dest_pgdir, *src_pgdir;
+
+	dest_pgdir = pcb[dest_tcb->pid - 1].pgdir;
+	src_pgdir = pcb[src_tcb->pid - 1].pgdir;
+
+	share_pgtable((uintptr_t)dest_pgdir, pa2kva(PGDIR_PA));
 	// 复制数据和代码段
-	for(i = 0; i < src_pcb->dt_size; i += PAGE_SIZE)
+	for(i = 0; i < src_tcb->dt_size; i += PAGE_SIZE)
 	{
-		bits = get_attribute(*((PTE *)get_kaddr(USER_ENTRYPOINT + i, src_pcb->pgdir, 2)), TOTAL_FLAG_MASK);
-		kaddr = alloc_page_helper(USER_ENTRYPOINT + i, dest_pcb->pgdir, bits);
+		bits = get_attribute(*((PTE *)get_kaddr(USER_ENTRYPOINT + i, src_pgdir, 2)), TOTAL_FLAG_MASK);
+		kaddr = alloc_page_helper(USER_ENTRYPOINT + i, dest_pgdir, bits);
 		memcpy((uint8_t *)kaddr, 
-			(const uint8_t *)get_kaddr(USER_ENTRYPOINT + i, src_pcb->pgdir, 3), PAGE_SIZE);
+			(const uint8_t *)get_kaddr(USER_ENTRYPOINT + i, src_pgdir, 3), PAGE_SIZE);
 	}
 	// 复制用户栈
-	for(i = 0; i < src_pcb->us_size; i += PAGE_SIZE)
+	for(i = 0; i < src_tcb->us_size; i += PAGE_SIZE)
 	{
-		kaddr = alloc_page_helper(USER_STACK_ADDR - i - PAGE_SIZE, dest_pcb->pgdir, 
+		kaddr = alloc_page_helper(USER_STACK_ADDR - i - PAGE_SIZE, dest_pgdir, 
 				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_DIRTY | _PAGE_USER);
 		memcpy((uint8_t *)kaddr, 
-			(const uint8_t *)get_kaddr(USER_STACK_ADDR - i - PAGE_SIZE, src_pcb->pgdir, 3), PAGE_SIZE);
+			(const uint8_t *)get_kaddr(USER_STACK_ADDR - i - PAGE_SIZE, src_pgdir, 3), PAGE_SIZE);
 
 	}
 	// 分配内核栈并清零
-	for(i = 0; i < src_pcb->ks_size; i += PAGE_SIZE)
+	for(i = 0; i < src_tcb->ks_size; i += PAGE_SIZE)
 	{
-		kaddr = alloc_page_helper(KERNEL_STACK_ADDR - i - PAGE_SIZE, dest_pcb->pgdir, 
+		kaddr = alloc_page_helper(KERNEL_STACK_ADDR - i - PAGE_SIZE, dest_pgdir, 
 				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY);
 		bzero((uint8_t *)kaddr, PAGE_SIZE);
 
@@ -266,43 +272,66 @@ int uvmcopy(pcb_t * dest_pcb, pcb_t * src_pcb)
 	return 1;
 }
 
-int uvmfree_seg(int flag, int size, PTE * pgdir)
+int uvmfree_seg(int flag, tcb_t * t, PTE * pgdir)
 {
 	uint64_t va_start,i;
+	uint64_t size;
 	switch(flag)
 	{
-		case DATA_AND_TEXT_SEG: va_start = USER_ENTRYPOINT; break;
-		case USER_STACK_SEG: va_start = USER_STACK_ADDR - size; break;
-		case KERNEL_STACK_SEG: va_start = KERNEL_STACK_ADDR - size; break;
-		default: break;
+		case DATA_AND_TEXT_SEG: 
+			va_start = USER_ENTRYPOINT;
+			size = t->dt_size;
+			break;
+		case USER_STACK_SEG: 
+			va_start = t->user_stack_base - t->us_size; 
+			size = t->us_size;
+			break;
+		case KERNEL_STACK_SEG: 
+			va_start = t->kernel_stack_base - t->ks_size; 
+			size = t->ks_size;
+			break;
+		default: size = 0; break;
 	}
 	for(i = 0; i < size; i += PAGE_SIZE)
 	{
 		freePage(get_kaddr(va_start + i, pgdir, 3));
 	}
+	return 0;
 }
 
-int uvmumap_seg(int flag, int size, PTE * pgdir)
+int uvmumap_seg(int flag, tcb_t * t, PTE * pgdir)
 {
 	uint64_t va_start,i;
+	uint64_t size;
 	PTE * pte;
 	switch(flag)
 	{
-		case DATA_AND_TEXT_SEG: va_start = USER_ENTRYPOINT; break;
-		case USER_STACK_SEG: va_start = USER_STACK_ADDR - size; break;
-		case KERNEL_STACK_SEG: va_start = KERNEL_STACK_ADDR - size; break;
-		default: break;
+		case DATA_AND_TEXT_SEG: 
+			va_start = USER_ENTRYPOINT;
+			size = t->dt_size;
+			break;
+		case USER_STACK_SEG: 
+			va_start = t->user_stack_base - t->us_size; 
+			size = t->us_size;
+			break;
+		case KERNEL_STACK_SEG: 
+			va_start = t->kernel_stack_base - t->ks_size; 
+			size = t->ks_size;
+			break;
+		default: size = 0; break;
 	}
 	for(i = 0; i < size; i += PAGE_SIZE)
 	{
 		pte = (PTE *)get_kaddr(va_start + i, pgdir, 2);
 		*pte = 0;
 	}
+	return 0;
 }
 
 int uvmfree_pgtable(pcb_t *pcb)
 {
-	uint64_t va_start,offset;
+	uint64_t va_start,offset,i;
+	int pid = pcb->pid;
 	PTE * pte;
 	int level;
 	for(level = 1; level >= 0; level--)
@@ -316,34 +345,43 @@ int uvmfree_pgtable(pcb_t *pcb)
 			}
 		}
 		
-		va_start = USER_STACK_ADDR - pcb->us_size;
-		for(offset = 0; offset < pcb->us_size; offset += PAGE_SIZE)
+		for(i = 0; i < NUM_MAX_THREAD; i++)
 		{
-			if((pte = (PTE *)get_kaddr(va_start + offset,pcb->pgdir,level)) != 0)
+			if(tcb[i].pid == pid)
 			{
-				freePage(pa2kva(get_pa(*pte)));
-			}
-		}
+				va_start = tcb[i].user_stack_base - tcb[i].us_size;
+				for(offset = 0; offset < tcb[i].us_size; offset += PAGE_SIZE)
+				{
+					if((pte = (PTE *)get_kaddr(va_start + offset,pcb->pgdir,level)) != 0)
+					{
+						freePage(pa2kva(get_pa(*pte)));
+					}
+				}
 
-		va_start = KERNEL_STACK_ADDR - pcb->ks_size;
-		for(offset = 0; offset < pcb->ks_size; offset += PAGE_SIZE)
-		{
-			if((pte = (PTE *)get_kaddr(va_start + offset,pcb->pgdir,level)) != 0)
-			{
-				freePage(pa2kva(get_pa(*pte)));
+				va_start = tcb[i].kernel_stack_base - tcb[i].ks_size;
+				for(offset = 0; offset < tcb[i].ks_size; offset += PAGE_SIZE)
+				{
+					if((pte = (PTE *)get_kaddr(va_start + offset,pcb->pgdir,level)) != 0)
+					{
+						freePage(pa2kva(get_pa(*pte)));
+					}
+				}	
 			}
 		}
 	}
 	freePage((ptr_t)pcb->pgdir);
+	return 0;
 }
 
 
 uintptr_t shm_page_get(int key)
 {
     // TODO [P4-task4] shm_page_get:
+    return 0;
 }
 
 void shm_page_dt(uintptr_t addr)
 {
     // TODO [P4-task4] shm_page_dt:
+    ;
 }

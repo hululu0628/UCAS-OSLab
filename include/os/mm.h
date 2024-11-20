@@ -109,10 +109,10 @@ extern uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits);
 
 extern uint64_t get_kaddr(uint64_t va, PTE * pgdir, int level);	// 给出三级页表，拿到对应的内核地址
 
-extern int uvmcopy(pcb_t * cpcb, pcb_t * ppcb);
-extern int uvmfree_seg(int flag, int size, PTE * pgdir);
+extern int uvmcopy(tcb_t * ctcb, tcb_t * ptcb);
+extern int uvmfree_seg(int flag, tcb_t * t, PTE * pgdir);
 extern int uvmfree_pgtable(pcb_t * pcb);
-extern int uvmumap_seg(int flag, int size, PTE * pgdir);
+extern int uvmumap_seg(int flag, tcb_t * t, PTE * pgdir);
 
 
 // TODO [P4-task4]: shm_page_get/dt */

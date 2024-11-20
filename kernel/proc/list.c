@@ -24,22 +24,12 @@ void deleteNode(list_node_t * listnode)
 		printl("WARNING: In function deleteNode, the list is not in a queue\n");
 }
 
-void allocReadyProcess()
-{
-	int i;
-	for(i=0; i < NUM_MAX_PROC; i++)
-	{
-		if(pcb[i].status == TASK_READY)
-			addToQueue(&pcb[i].list,&ready_queue);
-	}
-}
-
 ptr_t getReadyProcess(list_head * queue)
 {
 	if(queue->next != queue)
-		return (ptr_t)FIND_PCB(queue->next);
+		return (ptr_t)FIND_TCB(queue->next);
 	else
-		return (ptr_t)(&pid0_pcb[get_current_cpu_id()]);
+		return (ptr_t)(&pid0_tcb[get_current_cpu_id()]);
 }
 
 void freeQueueToReady(list_head * head)

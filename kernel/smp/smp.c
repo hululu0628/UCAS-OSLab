@@ -13,17 +13,21 @@
 spin_lock_t slock;
 
 
-void init_pcb0(int cpuid)
+void init_proc0(int cpuid)
 {
-	pid0_pcb[cpuid].pid = 0;
-	pid0_pcb[cpuid].task_id = -1;
-	pid0_pcb[cpuid].kernel_sp = INIT_KERNEL_STACK + 2 * (1 + cpuid) * PAGE_SIZE;
-	pid0_pcb[cpuid].core_mask = 1 << cpuid;
 	pid0_pcb[cpuid].pgdir = (PTE *)pa2kva(PGDIR_PA);
-	pid0_pcb[cpuid].status = TASK_RUNNING;
-	pid0_pcb[cpuid].current_core_id = cpuid;
-	current_running = &pid0_pcb[cpuid];		// current running is kernel
-	process_id[cpuid] = pid0_pcb[cpuid].pid;
+	pid0_pcb[cpuid].task_id = -1;
+	pid0_pcb[cpuid].tcb_num = 1;
+
+	pid0_tcb[cpuid].pid = 0;
+	pid0_tcb[cpuid].tid = 0;
+	pid0_tcb[cpuid].kernel_sp = INIT_KERNEL_STACK + 2 * (1 + cpuid) * PAGE_SIZE;
+	pid0_tcb[cpuid].core_mask = 1 << cpuid;	
+	pid0_tcb[cpuid].status = TASK_RUNNING;
+	pid0_tcb[cpuid].current_core_id = cpuid;
+	current_running = &pid0_tcb[cpuid];		// current running is kernel
+	process_id[cpuid] = pid0_tcb[cpuid].pid;
+	thread_id[cpuid] = pid0_tcb[cpuid].tid;
 }
 
 void smp_init()
@@ -33,7 +37,7 @@ void smp_init()
 	int current_cpu_id = get_current_cpu_id();
 
 	// init pcb0[cpuid]
-	init_pcb0(current_cpu_id);
+	init_proc0(current_cpu_id);
 
 	// init stvec
 	setup_trap();
@@ -84,7 +88,13 @@ int do_taskset(int argc, char **argv)
 		{
 			pid = atoi(argv[2]);
 			mask = atoi(argv[1]);
-			pcb[pid - 1].core_mask = mask;
+			for(int i = 0; i < NUM_MAX_THREAD; i++)
+			{
+				if(tcb[i].pid == pid)
+				{
+					tcb[i].core_mask = mask;
+				}
+			}
 			return pid;
 		}
 	}

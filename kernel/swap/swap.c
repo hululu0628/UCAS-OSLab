@@ -127,11 +127,12 @@ int swap_out(void)
 int swap_in(uint64_t va)
 {
 	PTE * pte;
+	PTE * pgdir = pcb[current_running->pid - 1].pgdir;
 	uint64_t slot_index;
 	uint64_t kaddr;
 	uint64_t bits;
 
-	pte = (PTE *)get_kaddr(va, current_running->pgdir, 2);
+	pte = (PTE *)get_kaddr(va, pgdir, 2);
 	slot_index = get_swap_entry(pte);
 	
 	// 尝试分配一个页，经过设计该页一定是DIRTY的USER页，分配失败则进行换出操作
@@ -139,7 +140,7 @@ int swap_in(uint64_t va)
 	bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_DIRTY | _PAGE_USER;
 	if(va - USER_ENTRYPOINT < current_running->dt_size)
 		bits |= _PAGE_EXEC;
-	while((kaddr = alloc_page_helper(va, current_running->pgdir, 
+	while((kaddr = alloc_page_helper(va, pgdir, 
 			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_DIRTY | _PAGE_USER)) == 0)
 	{
 		swap_out();

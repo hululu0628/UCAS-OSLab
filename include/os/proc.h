@@ -38,8 +38,11 @@
 #define NUM_MAX_TASK 16
 
 #define NUM_MAX_PROC 16
+#define NUM_MAX_THREAD 16
 
-#define FIND_PCB(name) ((pcb_t *)(name->pcb_ptr))	// find pcb
+#define NO_TASK -1
+
+#define FIND_TCB(name) ((tcb_t *)(name->tcb_ptr))	// find pcb
 
 /* used to save register infomation */
 typedef struct regs_context
@@ -72,8 +75,7 @@ typedef enum {
 	TASK_EXITED,
 } task_status_t;
 
-/* Process Control Block */
-typedef struct pcb
+typedef struct tcb
 {
 	/* register context */
 	// in entry.S, when storing trapframe, using offset
@@ -83,25 +85,22 @@ typedef struct pcb
 	// NOTE: this order must be preserved, which is defined in regs.h!!
 	reg_t kernel_sp;
 	reg_t user_sp;
+    
+    	reg_t kernel_stack_base;
+    	reg_t user_stack_base;
 
 	/* previous, next pointer, pcb pointer */
 	list_node_t list;
-	list_head wait_list;
-
-	// pointer to parent process
-	struct pcb * parent;
 
 	/* process id */
 	pid_t pid;
-
-	int task_id;
+    
+    	tid_t tid;
 
 	/* BLOCK | READY | RUNNING */
 	task_status_t status;
 
-	PTE * pgdir;
-
-	uint32_t dt_size;
+    	uint32_t dt_size;
 	uint32_t us_size;
 	uint32_t ks_size;
 
@@ -109,12 +108,32 @@ typedef struct pcb
 	core_mask_t core_mask;
 	core_id_t current_core_id;
 
+	/* time(seconds) to wake up sleeping PCB */
+	uint64_t wakeup_time;
+}tcb_t;
+
+/* Process Control Block */
+typedef struct pcb
+{
+	list_head wait_list;
+
+	// pointer to parent process
+	struct pcb * parent;
+
+	/* process id */
+	pid_t pid;
+    
+	int tcb_num;
+
+	int task_id;
+
+	uint32_t dt_size;
+    
+	PTE * pgdir;
+    
 	/* cursor position */
 	int cursor_x;
 	int cursor_y;
-
-	/* time(seconds) to wake up sleeping PCB */
-	uint64_t wakeup_time;
 
 	/* mutex and mailbox index */
 	int mlock_table[LOCK_NUM];
@@ -132,13 +151,20 @@ extern list_head sleep_queue;
 extern list_head wait_queue;
 
 /* current running task PCB */
-register pcb_t * current_running asm("tp");
+register tcb_t * current_running asm("tp");
+
 extern pid_t process_id[CPU_NUM];
+extern tid_t thread_id[CPU_NUM];
 
 extern pcb_t pcb[NUM_MAX_PROC]; 	// pid from 1 to 16
-extern pcb_t pid0_pcb[CPU_NUM];
+extern tcb_t tcb[NUM_MAX_THREAD];
 
-extern void switch_to(pcb_t *prev, pcb_t *next);
+extern pcb_t pid0_pcb[CPU_NUM];
+extern tcb_t pid0_tcb[CPU_NUM];
+
+extern void switch_proc(tcb_t *prev, tcb_t *next, pcb_t * prev_pcb, pcb_t * next_pcb);
+extern void switch_thread(tcb_t *prev, tcb_t *next);
+
 void do_scheduler(void);
 void do_sleep(uint32_t);
 
@@ -169,13 +195,13 @@ extern void wakeup(pcb_t * pcb);
 extern void reparent(pcb_t * parent, pcb_t * child);
 
 // extern uint64_t add_new_task(char *str, int argc, char **argv, int pid);
-extern void init_switch_to(ptr_t kernel_stack, pcb_t * pcb);
+extern void init_switch_to(ptr_t kernel_stack, tcb_t * tcb);
 extern void init_pcb_stack(
     ptr_t kernel_stack, ptr_t kuser_stack, ptr_t entry_point,
-    pcb_t *pcb, int argc, char **argv);
+    tcb_t *tcb, int argc, char **argv);
 /************************************************************/
 
-extern pcb_t * switch_pgtable(pcb_t * pcb);
+extern pcb_t * switch_pgtable(PTE * pgdir);
 
 extern PTE * get_pgdir(pcb_t * pcb);
 

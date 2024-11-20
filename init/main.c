@@ -120,15 +120,18 @@ static inline void load_init()
 		kernel_stack = alloc_page_helper(KERNEL_STACK_ADDR - PAGE_SIZE, pgdir, 
 			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY) + PAGE_SIZE;
 			
-		init_pcb_stack(kernel_stack, kusr_stack, USER_ENTRYPOINT, &pcb[0],1,init_argv);
+		init_pcb_stack(kernel_stack, kusr_stack, USER_ENTRYPOINT, &tcb[0],1,init_argv);
 
 		pcb[0].dt_size = page_number * PAGE_SIZE;
-		pcb[0].ks_size = PAGE_SIZE;
-		pcb[0].us_size = PAGE_SIZE;
-		pcb[0].status = TASK_READY;
-		pcb[0].core_mask = MASK_ZERO_ONE;
+		pcb[0].tcb_num = 1;
 
-		addToQueue(&pcb[0].list,&ready_queue);
+		tcb[0].dt_size = page_number * PAGE_SIZE;
+		tcb[0].ks_size = PAGE_SIZE;
+		tcb[0].us_size = PAGE_SIZE;
+		tcb[0].status = TASK_READY;
+		tcb[0].core_mask = MASK_ZERO_ONE;
+
+		addToQueue(&tcb[0].list,&ready_queue);
 	}
 
 	// there's a temp content in kernel pgdir 
@@ -146,17 +149,25 @@ static void init_pcb(void)
 	for(i = 0; i < NUM_MAX_PROC; i++)
 	{
 		pcb[i].pid = i + 1;
-		pcb[i].list.prev = NULL;
-		pcb[i].list.next = NULL;
-		pcb[i].list.pcb_ptr = (ptr_t)&pcb[i];
 		pcb[i].wait_list.next = &pcb[i].wait_list;
 		pcb[i].wait_list.prev = &pcb[i].wait_list;
-		pcb[i].status = TASK_EXITED;			// useless?
-		pcb[i].current_core_id = NO_CORE;
+		pcb[i].tcb_num = 0;
 	}
-
-
 }
+
+static void init_tcb(void)
+{
+	int i;
+	for(i = 0; i < NUM_MAX_THREAD; i++)
+	{
+		tcb[i].list.prev = NULL;
+		tcb[i].list.next = NULL;
+		tcb[i].list.tcb_ptr = (ptr_t)&pcb[i];
+		tcb[i].status = TASK_EXITED;
+		tcb[i].current_core_id = NO_CORE;
+	}
+}
+
 
 static void init_syscall(void)
 {
@@ -265,7 +276,9 @@ int main(void)
 		// Init Process Control Blocks |•'-'•) ✧
 		init_pcb();
 
-		init_pcb0(0);
+		init_tcb();
+
+		init_proc0(0);
 		
 		printk("> [INIT] PCB initialization succeeded.\n");
 

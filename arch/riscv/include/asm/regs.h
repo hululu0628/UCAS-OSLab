@@ -90,8 +90,8 @@
 /* Size of stack frame, word/double word alignment */
 #define OFFSET_SIZE             288
 
-#define PCB_KERNEL_SP          0 + OFFSET_SIZE
-#define PCB_USER_SP            8 + OFFSET_SIZE
+#define TCB_KERNEL_SP          0 + OFFSET_SIZE
+#define TCB_USER_SP            8 + OFFSET_SIZE
 
 /* offset in switch_to */
 #define SWITCH_TO_RA     0

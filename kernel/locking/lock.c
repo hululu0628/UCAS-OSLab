@@ -26,7 +26,7 @@ void init_locks(void)
 	{
 		mlocks[i].block_queue.next = &mlocks[i].block_queue;
 		mlocks[i].block_queue.prev = &mlocks[i].block_queue;
-		mlocks[i].block_queue.pcb_ptr = (ptr_t)NULL;
+		mlocks[i].block_queue.tcb_ptr = (ptr_t)NULL;
 		mlocks[i].lock.status = UNLOCKED;
 	}
 }
@@ -79,7 +79,7 @@ void do_mutex_lock_acquire(int mlock_idx)
 	// The process tries to acquire the lock until it succeed
 	// For details, see README.md
 	mutex_acquire(&mlocks[mlock_idx]);
-	current_running->mlock_table[mlock_idx] = 1;
+	pcb[current_running->pid - 1].mlock_table[mlock_idx] = 1;
 }
 
 void mutex_release(mutex_lock_t *lock)
@@ -94,7 +94,7 @@ void do_mutex_lock_release(int mlock_idx)
 	/* TODO: [p2-task2] release mutex lock */
 
 	mutex_release(&mlocks[mlock_idx]);
-	current_running->mlock_table[mlock_idx] = 0;
+	pcb[current_running->pid - 1].mlock_table[mlock_idx] = 0;
 }
 
 
@@ -105,7 +105,7 @@ void init_barriers(void)
 	{
 		barriers[i].block_queue.next = &barriers[i].block_queue;
 		barriers[i].block_queue.prev = &barriers[i].block_queue;
-		barriers[i].block_queue.pcb_ptr = (ptr_t)NULL;
+		barriers[i].block_queue.tcb_ptr = (ptr_t)NULL;
 	}
 }
 
@@ -141,7 +141,7 @@ void init_conditions(void)
 	{
 		conditions[i].block_queue.next = &conditions[i].block_queue;
 		conditions[i].block_queue.prev = &conditions[i].block_queue;
-		conditions[i].block_queue.pcb_ptr = (ptr_t)NULL;
+		conditions[i].block_queue.tcb_ptr = (ptr_t)NULL;
 	}
 }
 
@@ -214,7 +214,7 @@ int do_mbox_open(char *name)
 		if(mailboxes[i].name[0] != '\0' && strcmp(mailboxes[i].name,name) == 0)
 		{
 			mailboxes[i].ref_cnt++;
-			current_running->mbox_table[i] = 1;
+			pcb[current_running->pid - 1].mbox_table[i] = 1;
 			return i;
 		}
 	}
@@ -224,7 +224,7 @@ int do_mbox_open(char *name)
 		{
 			strcpy(mailboxes[i].name, name);
 			mailboxes[i].ref_cnt++;
-			current_running->mbox_table[i] = 1;
+			pcb[current_running->pid - 1].mbox_table[i] = 1;
 			return i;
 		}
 	}
@@ -241,7 +241,7 @@ void do_mbox_close(int mbox_idx)
 		mailboxes[mbox_idx].head = 0;
 		mailboxes[mbox_idx].tail = 0;
 		mailboxes[mbox_idx].remain_length = MAX_MBOX_LENGTH;
-		current_running->mbox_table[mbox_idx] = 0;
+		pcb[current_running->pid - 1].mbox_table[mbox_idx] = 0;
 	}
 	else if(mailboxes[mbox_idx].ref_cnt < 0)
 	{

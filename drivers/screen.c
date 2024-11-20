@@ -45,12 +45,13 @@ void screen_putchar(char ch)
 /* write a char */
 void screen_write_ch(char ch)
 {
+	int pid = current_running->pid;
 	if (ch == '\n' || ch == '\r')
 	{
-		current_running->cursor_x = 0;
-		if (current_running->cursor_y < SCREEN_HEIGHT)
+		pcb[pid - 1].cursor_x = 0;
+		if (pcb[pid - 1].cursor_y < SCREEN_HEIGHT)
 		{
-			current_running->cursor_y++;
+			pcb[pid - 1].cursor_y++;
 		}
 	}
 	else if (ch == '\b' || ch == '\177')
@@ -58,33 +59,33 @@ void screen_write_ch(char ch)
 		// TODO: [P3] support backspace here
 		// 若在正常情况下，通过enter换行会使得上一行的末尾字符为空白
 		// 以下实现也只保证在正常情况下出现预期的效果
-		if(current_running->cursor_x > 0)
+		if(pcb[pid - 1].cursor_x > 0)
 		{
-			current_running->cursor_x--;
-			new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ' ';
+			pcb[pid - 1].cursor_x--;
+			new_screen[SCREEN_LOC(pcb[pid - 1].cursor_x, pcb[pid - 1].cursor_y)] = ' ';
 		}
-		else if(current_running->cursor_x == 0)
+		else if(pcb[pid - 1].cursor_x == 0)
 		{
-			if(current_running->cursor_y > 0)
+			if(pcb[pid - 1].cursor_y > 0)
 			{
-				if(new_screen[SCREEN_LOC(SCREEN_WIDTH - 1, current_running->cursor_y - 1)] != ' ')
+				if(new_screen[SCREEN_LOC(SCREEN_WIDTH - 1, pcb[pid - 1].cursor_y - 1)] != ' ')
 				{
-					current_running->cursor_x = SCREEN_WIDTH - 1;
-					current_running->cursor_y--;
-					new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ' ';
+					pcb[pid - 1].cursor_x = SCREEN_WIDTH - 1;
+					pcb[pid - 1].cursor_y--;
+					new_screen[SCREEN_LOC(pcb[pid - 1].cursor_x, pcb[pid - 1].cursor_y)] = ' ';
 				}
 			}
 		}
 	}
 	else
 	{
-		new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ch;
-		if (++current_running->cursor_x >= SCREEN_WIDTH)
+		new_screen[SCREEN_LOC(pcb[pid - 1].cursor_x, pcb[pid - 1].cursor_y)] = ch;
+		if (++pcb[pid - 1].cursor_x >= SCREEN_WIDTH)
 		{
-			current_running->cursor_x = 0;
-			if (current_running->cursor_y < SCREEN_HEIGHT)
+			pcb[pid - 1].cursor_x = 0;
+			if (pcb[pid - 1].cursor_y < SCREEN_HEIGHT)
 			{
-				current_running->cursor_y++;
+				pcb[pid - 1].cursor_y++;
 			}
 		}
 	}
@@ -94,41 +95,43 @@ void screen_write_ch(char ch)
 
 void init_screen(void)
 {
-    vt100_hidden_cursor();
-    vt100_clear();
-    screen_clear();
+	vt100_hidden_cursor();
+	vt100_clear();
+	screen_clear();
 }
 
 void screen_clear(void)
 {
-    int i, j;
-	vt100_clear();
-    for (i = 0; i < SCREEN_HEIGHT; i++)
-    {
-        for (j = 0; j < SCREEN_WIDTH; j++)
-        {
-            new_screen[SCREEN_LOC(j, i)] = ' ';
-			old_screen[SCREEN_LOC(j, i)] = ' ';
-        }
-    }
-    current_running->cursor_x = 0;
-    current_running->cursor_y = 0;
-    screen_reflush();
+	int pid = current_running->pid;
+	int i, j;
+		vt100_clear();
+	for (i = 0; i < SCREEN_HEIGHT; i++)
+	{
+		for (j = 0; j < SCREEN_WIDTH; j++)
+		{
+		new_screen[SCREEN_LOC(j, i)] = ' ';
+				old_screen[SCREEN_LOC(j, i)] = ' ';
+		}
+	}
+	pcb[pid - 1].cursor_x = 0;
+	pcb[pid - 1].cursor_y = 0;
+	screen_reflush();
 }
 
 void screen_move_cursor(int x, int y)
 {
-    if (x >= SCREEN_WIDTH)
-        x = SCREEN_WIDTH - 1;
-    else if (x < 0)
-        x = 0;
-    if (y >= SCREEN_HEIGHT)
-        y = SCREEN_HEIGHT - 1;
-    else if (y < 0)
-        y = 0;
-    current_running->cursor_x = x;
-    current_running->cursor_y = y;
-    vt100_move_cursor(x + 1, y + 1);
+	int pid = current_running->pid;
+	if (x >= SCREEN_WIDTH)
+		x = SCREEN_WIDTH - 1;
+	else if (x < 0)
+		x = 0;
+	if (y >= SCREEN_HEIGHT)
+		y = SCREEN_HEIGHT - 1;
+	else if (y < 0)
+		y = 0;
+	pcb[pid - 1].cursor_x = x;
+	pcb[pid - 1].cursor_y = y;
+	vt100_move_cursor(x + 1, y + 1);
 }
 
 
@@ -152,23 +155,24 @@ void screen_write(char *buff)
  */
 void screen_reflush(void)
 {
-    int i, j;
+	int pid = current_running->pid;
+	int i, j;
 
-    /* here to reflush screen buffer to serial port */
-    for (i = 0; i < SCREEN_HEIGHT; i++)
-    {
-        for (j = 0; j < SCREEN_WIDTH; j++)
-        {
-            /* We only print the data of the modified location. */
-            if (new_screen[SCREEN_LOC(j, i)] != old_screen[SCREEN_LOC(j, i)])
-            {
-                vt100_move_cursor(j + 1, i + 1);
-                bios_putchar(new_screen[SCREEN_LOC(j, i)]);
-                old_screen[SCREEN_LOC(j, i)] = new_screen[SCREEN_LOC(j, i)];
-            }
-        }
-    }
+	/* here to reflush screen buffer to serial port */
+	for (i = 0; i < SCREEN_HEIGHT; i++)
+	{
+		for (j = 0; j < SCREEN_WIDTH; j++)
+		{
+		/* We only print the data of the modified location. */
+		if (new_screen[SCREEN_LOC(j, i)] != old_screen[SCREEN_LOC(j, i)])
+		{
+			vt100_move_cursor(j + 1, i + 1);
+			bios_putchar(new_screen[SCREEN_LOC(j, i)]);
+			old_screen[SCREEN_LOC(j, i)] = new_screen[SCREEN_LOC(j, i)];
+		}
+		}
+	}
 
-    /* recover cursor position */
-    vt100_move_cursor(current_running->cursor_x + 1, current_running->cursor_y + 1);
+	/* recover cursor position */
+	vt100_move_cursor(pcb[pid - 1].cursor_x + 1, pcb[pid - 1].cursor_y + 1);
 }

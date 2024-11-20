@@ -9,6 +9,10 @@
 
 void handle_load_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
+	int pid = current_running->pid;
+	int task_id = pcb[pid - 1].task_id;
+	PTE * pgdir = pcb[pid - 1].pgdir;
+
 	PTE * pte;
 	uint64_t bits;
 	uint64_t kaddr;
@@ -16,19 +20,19 @@ void handle_load_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 	printl("load fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
 	
 	// 可能页表都没有建立
-	kaddr = alloc_page_helper(stval, current_running->pgdir, bits);
+	kaddr = alloc_page_helper(stval, pgdir, bits);
 	if(kaddr)
 		return;
 	
-	if(get_kaddr(stval, current_running->pgdir, 3) == 0)
+	if(get_kaddr(stval, pgdir, 3) == 0)
 	{
-		pte = (PTE *)get_kaddr(stval, current_running->pgdir, 2);
+		pte = (PTE *)get_kaddr(stval, pgdir, 2);
 		if(*pte == 0)
 		{
 			// 缺页，目前只可能是数据段
 			while(1)
 			{
-				kaddr = alloc_page_helper(stval, current_running->pgdir, bits);
+				kaddr = alloc_page_helper(stval, pgdir, bits);
 				if(kaddr)
 					break;
 				else
@@ -36,8 +40,8 @@ void handle_load_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 			}
 			int block_start,load_num;
 			block_start = ((stval - USER_ENTRYPOINT) >> NORMAL_PAGE_SHIFT) << 3;
-			load_num = tasks[current_running->task_id].block_num - block_start;
-			block_start = tasks[current_running->task_id].block_id + block_start;
+			load_num = tasks[task_id].block_num - block_start;
+			block_start = tasks[task_id].block_id + block_start;
 			if(load_num >= 8)
 				load_task_l(kaddr, block_start, 8);
 			else
@@ -49,7 +53,7 @@ void handle_load_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 			swap_in(stval);
 		}
 	}
-	else if((pte = (PTE *)get_kaddr(stval, current_running->pgdir, 2)) != 0)
+	else if((pte = (PTE *)get_kaddr(stval, pgdir, 2)) != 0)
 	{
 		// 需要对页的FLAG更新
 		if((*pte & _PAGE_ACCESSED) == 0)
@@ -67,24 +71,28 @@ void handle_load_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 
 void handle_store_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
+	int pid = current_running->pid;
+	int task_id = pcb[pid - 1].task_id;
+	PTE * pgdir = pcb[pid - 1].pgdir;
+
 	PTE * pte;
 	uint64_t bits;
 	uint64_t kaddr;
 	bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY | _PAGE_USER;
 	printl("store fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
 
-	kaddr = alloc_page_helper(stval, current_running->pgdir, bits);
+	kaddr = alloc_page_helper(stval, pgdir, bits);
 	if(kaddr)
 		return;
 
-	if(get_kaddr(stval, current_running->pgdir, 3) == 0)
+	if(get_kaddr(stval, pgdir, 3) == 0)
 	{
-		pte = (PTE *)get_kaddr(stval, current_running->pgdir, 2);
+		pte = (PTE *)get_kaddr(stval, pgdir, 2);
 		if(*pte == 0)
 		{
 			while(1)
 			{
-				kaddr = alloc_page_helper(stval, current_running->pgdir, bits);
+				kaddr = alloc_page_helper(stval, pgdir, bits);
 				if(kaddr)
 					break;
 				else
@@ -92,8 +100,8 @@ void handle_store_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 			}
 			int block_start,load_num;
 			block_start = ((stval - USER_ENTRYPOINT) >> NORMAL_PAGE_SHIFT) << 3;
-			load_num = tasks[current_running->task_id].block_num - block_start;
-			block_start = tasks[current_running->task_id].block_id + block_start;
+			load_num = tasks[task_id].block_num - block_start;
+			block_start = tasks[task_id].block_id + block_start;
 			if(load_num >= 8)
 				load_task_l(kaddr, block_start, 8);
 			else
@@ -102,7 +110,7 @@ void handle_store_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 		else
 			swap_in(stval);
 	}
-	else if((pte = (PTE *)get_kaddr(stval, current_running->pgdir, 2)) != 0)
+	else if((pte = (PTE *)get_kaddr(stval, pgdir, 2)) != 0)
 	{
 		if((*pte & _PAGE_DIRTY) == 0)
 		{
@@ -119,24 +127,28 @@ void handle_store_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 
 void handle_instr_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
+	int pid = current_running->pid;
+	int task_id = pcb[pid - 1].task_id;
+	PTE * pgdir = pcb[pid - 1].pgdir;
+
 	PTE * pte;
 	uint64_t bits;
 	uint64_t kaddr;
 	bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_EXEC | _PAGE_USER;
 	printl("instr fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
 
-	kaddr = alloc_page_helper(stval, current_running->pgdir, bits);
+	kaddr = alloc_page_helper(stval, pgdir, bits);
 	if(kaddr)
 		return;
 
-	if(get_kaddr(stval, current_running->pgdir, 3) == 0)
+	if(get_kaddr(stval, pgdir, 3) == 0)
 	{
-		pte = (PTE *)get_kaddr(stval, current_running->pgdir, 2);
+		pte = (PTE *)get_kaddr(stval, pgdir, 2);
 		if(*pte == 0)
 		{
 			while(1)
 			{
-				kaddr = alloc_page_helper(stval, current_running->pgdir, bits);
+				kaddr = alloc_page_helper(stval, pgdir, bits);
 				if(kaddr)
 					break;
 				else
@@ -144,8 +156,8 @@ void handle_instr_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 			}
 			int block_start,load_num;
 			block_start = ((stval - USER_ENTRYPOINT) >> NORMAL_PAGE_SHIFT) << 3;
-			load_num = tasks[current_running->task_id].block_num - block_start;
-			block_start = tasks[current_running->task_id].block_id + block_start;
+			load_num = tasks[task_id].block_num - block_start;
+			block_start = tasks[task_id].block_id + block_start;
 			if(load_num >= 8)
 				load_task_l(kaddr, block_start, 8);
 			else
@@ -154,7 +166,7 @@ void handle_instr_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 		else
 			swap_in(stval);
 	}
-	else if((pte = (PTE *)get_kaddr(stval, current_running->pgdir, 2)) != 0)
+	else if((pte = (PTE *)get_kaddr(stval, pgdir, 2)) != 0)
 	{
 		if((*pte & _PAGE_ACCESSED) == 0)
 		{

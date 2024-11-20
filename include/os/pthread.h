@@ -1,11 +1,7 @@
 #ifndef INCLUDE_PTHREAD_H
 #define INCLUDE_PTHREAD_H
 
-
-typedef struct tcb
-{
-	
-}tcb_t;
+#define THREAD_STACK 0x10000
 
 
 #endif

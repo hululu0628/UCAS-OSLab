@@ -16,7 +16,7 @@
 typedef uint32_t core_mask_t;
 typedef int core_id_t;
 
-extern void init_pcb0(int cpuid);
+extern void init_proc0(int cpuid);
 
 extern void smp_init();
 extern void wakeup_other_hart();
