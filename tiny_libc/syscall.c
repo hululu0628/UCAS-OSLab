@@ -3,7 +3,7 @@
 #include <kernel.h>
 #include <unistd.h>
 
-static const long IGNORE = 0L;
+// static const long IGNORE = 0L;
 
 static long invoke_syscall(long sysno, long arg0, long arg1, long arg2,
                            long arg3, long arg4)
@@ -114,7 +114,7 @@ pid_t  sys_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2)
 void  sys_exec(char *name, int argc, char **argv)
 {
 	/* TODO: [p3-task1] call invoke_syscall to implement sys_exec */
-	return invoke_syscall(SYSCALL_EXEC, (long)name, (long)argc, (long)argv, 0, 0);
+	invoke_syscall(SYSCALL_EXEC, (long)name, (long)argc, (long)argv, 0, 0);
 }
 #endif
 
@@ -134,16 +134,16 @@ void sys_exit(void)
 	invoke_syscall(SYSCALL_EXIT, 0, 0, 0, 0, 0);
 }
 
-int  sys_kill(pid_t pid)
+int sys_kill(pid_t pid)
 {
 	/* TODO: [p3-task1] call invoke_syscall to implement sys_kill */
-	invoke_syscall(SYSCALL_KILL, (long)pid, 0, 0, 0, 0);
+	return invoke_syscall(SYSCALL_KILL, (long)pid, 0, 0, 0, 0);
 }
 
-int  sys_waitpid(pid_t pid)
+int sys_waitpid(pid_t pid)
 {
 	/* TODO: [p3-task1] call invoke_syscall to implement sys_waitpid */
-	invoke_syscall(SYSCALL_WAITPID, (long)pid, 0, 0, 0, 0);
+	return invoke_syscall(SYSCALL_WAITPID, (long)pid, 0, 0, 0, 0);
 }
 
 
@@ -198,7 +198,7 @@ void sys_barrier_destroy(int bar_idx)
 int sys_condition_init(int key)
 {
 	/* TODO: [p3-task2] call invoke_syscall to implement sys_condition_init */
-	invoke_syscall(SYSCALL_COND_INIT, (long)key, 0, 0, 0, 0);
+	return invoke_syscall(SYSCALL_COND_INIT, (long)key, 0, 0, 0, 0);
 }
 
 void sys_condition_wait(int cond_idx, int mutex_idx)
@@ -228,6 +228,7 @@ void sys_condition_destroy(int cond_idx)
 int sys_semaphore_init(int key, int init)
 {
     	/* TODO: [p3-task2] call invoke_syscall to implement sys_semaphore_init */
+	return 0;
 }
 
 void sys_semaphore_up(int sema_idx)
@@ -274,9 +275,20 @@ int sys_taskset(int argc, char **argv)
 	return invoke_syscall(SYSCALL_TASKSET, (long)argc, (long)argv, 0, 0, 0);
 }
 
+void sys_pthread_create(pthread_t *thread, void (*start_routine)(void*), void *arg)
+{
+	invoke_syscall(SYSCALL_PTHREAD_CREATE, (long)thread, (long)start_routine, (long)arg, 0, 0);
+}
+
+int sys_pthread_join(pthread_t thread)
+{
+	return invoke_syscall(SYSCALL_PTHREAD_JOIN, (long)thread, 0, 0, 0, 0);
+}
+
 void* sys_shmpageget(int key)
 {
     /* TODO: [p4-task4] call invoke_syscall to implement sys_shmpageget */
+    return 0;
 }
 
 void sys_shmpagedt(void *addr)

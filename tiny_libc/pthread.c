@@ -1,14 +1,17 @@
 #include <pthread.h>
+#include <unistd.h>
 
 /* TODO:[P4-task4] pthread_create/wait */
 void pthread_create(pthread_t *thread,
                    void (*start_routine)(void*),
                    void *arg)
 {
-    /* TODO: [p4-task4] implement pthread_create */
+    	/* TODO: [p4-task4] implement pthread_create */
+	sys_pthread_create(thread, start_routine, arg);
 }
 
 int pthread_join(pthread_t thread)
 {
-    /* TODO: [p4-task4] implement pthread_join */
+	/* TODO: [p4-task4] implement pthread_join */
+	return sys_pthread_join(thread);
 }

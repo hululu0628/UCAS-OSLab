@@ -53,6 +53,7 @@ typedef unsigned __attribute__((__mode__(DI))) uint64_t;
 
 typedef int32_t pid_t;
 typedef int32_t tid_t;
+typedef tid_t pthread_t;
 typedef uint64_t reg_t;
 typedef uint64_t ptr_t;
 typedef uint64_t uintptr_t;

@@ -67,6 +67,13 @@ int sys_mbox_recv(int mbox_idx, void *msg, int msg_length);
 int sys_taskset(int argc, char **argv);
 
 
+void sys_pthread_create(pthread_t *thread,
+                   void (*start_routine)(void*),
+                   void *arg);
+
+int pthread_join(pthread_t thread);
+
+
 /* TODO: [P4-task5] shmpageget/dt */
 /* shmpageget/dt */
 void* sys_shmpageget(int key);

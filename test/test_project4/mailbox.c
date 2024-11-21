@@ -200,7 +200,6 @@ int main(int argc, char* argv[])
 
     pthread_t recv;
     pthread_create(&recv, recv_thread, (void*)(unsigned long)id);
-
     // use this thread as send thread
     send_thread((void*)(unsigned long)id);
 

@@ -21,6 +21,7 @@
 #include <os/smp.h>
 #include <os/mm.h>
 #include <os/swap.h>
+#include <os/pthread.h>
 
 
 
@@ -125,6 +126,7 @@ static inline void load_init()
 		pcb[0].dt_size = page_number * PAGE_SIZE;
 		pcb[0].tcb_num = 1;
 
+		tcb[0].pid = 1;
 		tcb[0].dt_size = page_number * PAGE_SIZE;
 		tcb[0].ks_size = PAGE_SIZE;
 		tcb[0].us_size = PAGE_SIZE;
@@ -162,7 +164,7 @@ static void init_tcb(void)
 	{
 		tcb[i].list.prev = NULL;
 		tcb[i].list.next = NULL;
-		tcb[i].list.tcb_ptr = (ptr_t)&pcb[i];
+		tcb[i].list.tcb_ptr = (ptr_t)&tcb[i];
 		tcb[i].status = TASK_EXITED;
 		tcb[i].current_core_id = NO_CORE;
 	}
@@ -222,6 +224,9 @@ static void init_syscall(void)
 	syscall[SYSCALL_MBOX_CLOSE]	= (long (*)())do_mbox_close;
 	syscall[SYSCALL_MBOX_SEND]	= (long (*)())do_mbox_send;
 	syscall[SYSCALL_MBOX_RECV]	= (long (*)())do_mbox_recv;
+
+	syscall[SYSCALL_PTHREAD_CREATE] = (long (*)())pthread_create;
+	syscall[SYSCALL_PTHREAD_JOIN] = (long (*)())pthread_join;
 }
 
 /*

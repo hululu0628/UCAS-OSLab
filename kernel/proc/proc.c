@@ -245,11 +245,12 @@ void do_exec(char *name, int argc, char **argv)
 		{
 			uvmfree_seg(USER_STACK_SEG, current_running, pgdir);
 			uvmumap_seg(USER_STACK_SEG, current_running, pgdir);
-		}
-		if(&tcb[i] != current_running)
-		{
-			uvmfree_seg(KERNEL_STACK_SEG, current_running, pgdir);
-			uvmumap_seg(KERNEL_STACK_SEG, current_running, pgdir);
+		
+			if(&tcb[i] != current_running)
+			{
+				uvmfree_seg(KERNEL_STACK_SEG, current_running, pgdir);
+				uvmumap_seg(KERNEL_STACK_SEG, current_running, pgdir);
+			}
 		}
 	}
 	pcb[pid - 1].tcb_num = 1;

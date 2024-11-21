@@ -86,7 +86,7 @@ void freePage(ptr_t baseAddr);
 
 // #define S_CORE
 // NOTE: only need for S-core to alloc 2MB large page
-#define USER_ENTRYPOINT 0x200000
+#define USER_ENTRYPOINT 0x10000
 
 #ifdef S_CORE
 
