@@ -23,7 +23,7 @@
 #include <os/swap.h>
 #include <os/pthread.h>
 
-
+// #define M_CORE
 
 
 // Task info array
@@ -226,7 +226,10 @@ static void init_syscall(void)
 	syscall[SYSCALL_MBOX_RECV]	= (long (*)())do_mbox_recv;
 
 	syscall[SYSCALL_PTHREAD_CREATE] = (long (*)())pthread_create;
-	syscall[SYSCALL_PTHREAD_JOIN] = (long (*)())pthread_join;
+	syscall[SYSCALL_PTHREAD_JOIN] 	= (long (*)())pthread_join;
+
+	syscall[SYSCALL_SHM_GET]	= (long (*)())shm_page_get;
+	syscall[SYSCALL_SHM_DT]		= (long (*)())shm_page_dt;
 }
 
 /*
@@ -312,7 +315,9 @@ int main(void)
 		load_init();
 
 		wakeup_other_hart();
-
+		#ifndef M_CORE
+		cleanTempPgtab();
+		#endif
 
 		/*
 		* Just start kernel with VM and print this string

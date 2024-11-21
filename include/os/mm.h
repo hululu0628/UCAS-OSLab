@@ -33,7 +33,12 @@
 #define MAP_KERNEL 1
 #define MAP_USER 2
 #define MEM_SIZE 32
+
 #define PAGE_SIZE 4096 // 4K
+#define PT_NUM 512
+
+#define SM_START 0x300000
+
 #define PAGE_NUM ((0x60000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)	// for debugging
 #define PGTAB_START ((0x51000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
 #define DYNAMIC_START ((0x52000000 - 0x50000000) >> NORMAL_PAGE_SHIFT)
@@ -68,12 +73,24 @@ typedef struct pageframe
 	uint32_t flags;
 	uint32_t page_num;
 	struct pageframe * next;
+	uint32_t ref_cnt;
 }pageframe;
 
 extern pageframe pages[PAGE_NUM];
 
 extern pageframe * free_list_proc;
 extern pageframe * free_list_pgtab;
+
+
+#define MAX_SHM_NUM	64
+typedef struct shared_mem
+{
+	uint32_t page_num;
+	uint32_t cnt;
+	uint32_t key;
+}shm;
+
+shm shm_array[MAX_SHM_NUM];
 
 extern void init_page(void);
 
@@ -110,6 +127,7 @@ extern uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits);
 extern uint64_t get_kaddr(uint64_t va, PTE * pgdir, int level);	// 给出三级页表，拿到对应的内核地址
 
 extern int uvmcopy(tcb_t * ctcb, tcb_t * ptcb);
+extern void uvmfree(PTE * pgdir);
 extern int uvmfree_seg(int flag, tcb_t * t, PTE * pgdir);
 extern int uvmfree_pgtable(pcb_t * pcb);
 extern int uvmumap_seg(int flag, tcb_t * t, PTE * pgdir);

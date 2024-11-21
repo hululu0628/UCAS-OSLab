@@ -187,7 +187,7 @@ pid_t do_fork(void)
 	int tid,pid;
 	pageframe * t;
 	if((tid = alloc_proc()) == -1)
-		_panic("sched.c", 179, "do_fork");
+		while(1);
 	
 	i = tid - 1;
 	pid = tcb[tid - 1].pid;
@@ -464,23 +464,18 @@ int alloc_proc()
 void free_proc(pcb_t *pcb)
 {
 	int pid = pcb->pid;
-	int i,j;
+	int i;
 
 	for(i = 0; i < NUM_MAX_THREAD; i++)
 	{
 		if(tcb[i].pid == pid)
 		{
-			uvmfree_seg(USER_STACK_SEG, &tcb[i], pcb->pgdir);
-			uvmfree_seg(KERNEL_STACK_SEG, &tcb[i], pcb->pgdir);
 			tcb[i].status = TASK_EXITED;
-			j = i;
 		}
 	}
-	uvmfree_seg(DATA_AND_TEXT_SEG, &tcb[j], pcb->pgdir);
 	
+	uvmfree(pcb->pgdir);
 	
-	uvmfree_pgtable(pcb);
-
 	pcb->parent = NULL;
 	pcb->tcb_num = 0;
 	pcb->pgdir = NULL;

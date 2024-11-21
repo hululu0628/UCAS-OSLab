@@ -287,12 +287,13 @@ int sys_pthread_join(pthread_t thread)
 
 void* sys_shmpageget(int key)
 {
-    /* TODO: [p4-task4] call invoke_syscall to implement sys_shmpageget */
-    return 0;
+	/* TODO: [p4-task4] call invoke_syscall to implement sys_shmpageget */
+	return (void *)invoke_syscall(SYSCALL_SHM_GET, (long)key, 0, 0, 0, 0);
 }
 
 void sys_shmpagedt(void *addr)
 {
-    /* TODO: [p4-task4] call invoke_syscall to implement sys_shmpagedt */
+	/* TODO: [p4-task4] call invoke_syscall to implement sys_shmpagedt */
+	invoke_syscall(SYSCALL_SHM_DT, (long)addr, 0, 0, 0, 0);
 }
 /************************************************************/

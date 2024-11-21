@@ -1,8 +1,9 @@
-#include "os/proc.h"
+#include <os/proc.h>
 #include <pgtable.h>
 #include <os/mm.h>
 #include <os/string.h>
 #include <os/smp.h>
+#include <os/swap.h>
 #include <assert.h>
 #include <os/string.h>
 
@@ -58,6 +59,8 @@ pageframe * allocPgtabPage()
 	{
 		free_list_pgtab = free_list_pgtab->next;
 		t->next = NULL;
+		t->ref_cnt++;
+		printl("page address %lx\n",GET_KADDR(t->page_num));
 	}
 	return t;
 }
@@ -72,6 +75,7 @@ pageframe * allocDynPage()
 	{
 		free_list_proc = free_list_proc->next;
 		t->next = NULL;
+		t->ref_cnt++;
 		printl("page address %lx\n",GET_KADDR(t->page_num));
 	}
 	return t;
@@ -84,25 +88,29 @@ void freePage(ptr_t baseAddr)
 	if(!baseAddr)
 		assert(0);
 	uint64_t i = (kva2pa(baseAddr) - 0x50000000) >> NORMAL_PAGE_SHIFT;
-	if(i >= PGTAB_START && i <= DYNAMIC_START)
+	pages[i].ref_cnt--;
+	if(pages[i].ref_cnt == 0)
 	{
-		pages[i].next = free_list_pgtab;
-		pages[i].flags = 0;
-		pages[i].pte = NULL;
-		free_list_pgtab = &pages[i];
-		printl("Free %lx\n",baseAddr);
-		// for a page directory, 
-		// clear the content when tries to free
-		clear_pgdir(baseAddr);
-	}
-	else if(i >= DYNAMIC_START && i <= PAGE_NUM)
-	{
-		pages[i].next = free_list_proc;
-		pages[i].flags = 0;
-		pages[i].pte = NULL;
-		free_list_proc = &pages[i];
+		if(i >= PGTAB_START && i <= DYNAMIC_START)
+		{
+			pages[i].next = free_list_pgtab;
+			pages[i].flags = 0;
+			pages[i].pte = NULL;
+			free_list_pgtab = &pages[i];
+			printl("Free %lx\n",baseAddr);
+			// for a page directory, 
+			// clear the content when tries to free
+			clear_pgdir(baseAddr);
+		}
+		else if(i >= DYNAMIC_START && i <= PAGE_NUM)
+		{
+			pages[i].next = free_list_proc;
+			pages[i].flags = 0;
+			pages[i].pte = NULL;
+			free_list_proc = &pages[i];
 
-		printl("Free %lx\n",baseAddr);
+			printl("Free %lx\n",baseAddr);
+		}
 	}
 }
 
@@ -272,6 +280,45 @@ int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 	return 1;
 }
 
+void uvmfree(PTE * pgdir)
+{
+	int i,j,k;
+	PTE *pmd, *pt;
+	for(i = 0; i < (PT_NUM >> 1); i++)
+	{
+		if(pgdir[i] & _PAGE_PRESENT)
+		{
+			pmd = (PTE *)pa2kva(get_pa(pgdir[i]));
+			for(j = 0; j < PT_NUM; j++)
+			{
+				if(pmd[j] & _PAGE_PRESENT)
+				{
+					pt = (PTE *)pa2kva(get_pa(pmd[j]));
+					for(k = 0; k < PT_NUM; k++)
+					{
+						if(pt[k] != 0)
+						{
+							if(pt[k] & _PAGE_PRESENT)
+							{
+								freePage(pa2kva(get_pa(pt[k])));
+							}
+							else
+							{
+								int slot_index;
+								slot_index = get_swap_entry(&pt[k]);
+								swap_free(slot_index);
+							}
+						}
+					}
+					freePage((ptr_t)pt);
+				}
+			}
+			freePage((ptr_t)pmd);
+		}
+	}
+	freePage((ptr_t)pgdir);
+}
+
 int uvmfree_seg(int flag, tcb_t * t, PTE * pgdir)
 {
 	uint64_t va_start,i;
@@ -376,12 +423,66 @@ int uvmfree_pgtable(pcb_t *pcb)
 
 uintptr_t shm_page_get(int key)
 {
-    // TODO [P4-task4] shm_page_get:
-    return 0;
+	// TODO [P4-task5] shm_page_get:
+	int i = key % MAX_SHM_NUM;
+	pageframe * t;
+	uint64_t va,kaddr,kaddr1;
+	uint64_t bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER;
+	PTE * pte;
+	PTE * pgdir = pcb[current_running->pid - 1].pgdir;
+
+	if(shm_array[i].page_num == 0)
+	{
+		t = allocDynPage();
+		t->flags = bits;
+
+		shm_array[i].page_num = t->page_num;
+		shm_array[i].key = key;
+		shm_array[i].cnt++;
+
+		kaddr = GET_KADDR(t->page_num);
+	}
+	else if(shm_array[i].key == key)
+	{
+		shm_array[i].cnt++;
+		kaddr = GET_KADDR(shm_array[i].page_num);
+		pages[shm_array[i].page_num].ref_cnt++;
+	}
+
+	for(va = SM_START; va < USER_STACK_ADDR; va += PAGE_SIZE)
+	{
+		if(get_kaddr(va, pgdir, 3) == 0)
+		{
+			kaddr1 = alloc_page_helper(va, pgdir, bits);
+			freePage(kaddr1);
+			pte = (PTE *)get_kaddr(va, pgdir, 2);
+			set_pfn(pte, kva2pa(kaddr) >> NORMAL_PAGE_SHIFT);
+			return va;
+		}
+	}
+	return 0;
 }
 
 void shm_page_dt(uintptr_t addr)
 {
-    // TODO [P4-task4] shm_page_dt:
-    ;
+	// TODO [P4-task5] shm_page_dt:
+	PTE * pgdir = pcb[current_running->pid - 1].pgdir;
+	uint64_t kaddr = get_kaddr(addr, pgdir, 3);
+	PTE * pte = (PTE *)get_kaddr(addr, pgdir, 2);
+	freePage(kaddr);
+	*pte = 0;
+	for(int i = 0; i < MAX_SHM_NUM; i++)
+	{
+		if(shm_array[i].page_num == GET_PAGE_NUM(kaddr))
+		{
+			shm_array[i].cnt--;
+			if(shm_array[i].cnt == 0)
+			{
+				shm_array[i].page_num = 0;
+				shm_array[i].key = 0;
+			}
+			break;
+		}
+	}
+	local_flush_tlb_all();
 }

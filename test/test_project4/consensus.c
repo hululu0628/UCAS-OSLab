@@ -95,7 +95,8 @@ int main(int argc, char* argv[])
             str_print_loc[_pos] = 0;
 
             // printf("loc : %s\n", str_print_loc);
-            sys_exec(sub_task_args[0], 2, sub_task_args);
+	    if(sys_fork() == 0)
+            	sys_exec(sub_task_args[0], 2, sub_task_args);
         }
     }
 
