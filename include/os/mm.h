@@ -35,6 +35,7 @@
 #define MEM_SIZE 32
 
 #define PAGE_SIZE 4096 // 4K
+#define PAGE_SHIFT 12lu
 #define PT_NUM 512
 
 #define SM_START 0x300000
@@ -46,7 +47,7 @@
 #define GET_PAGE_NUM(kaddr) ((kaddr - 0xffffffc050000000) >> NORMAL_PAGE_SHIFT)
 #define INIT_KERNEL_STACK 0xffffffc052000000
 
-#define DATA_AND_TEXT_SEG 0
+#define DTH_SEG 0
 #define USER_STACK_SEG 1
 #define KERNEL_STACK_SEG 2
 
@@ -71,6 +72,8 @@
 /* Rounding; only works for n = power of two */
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
 #define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
+
+#define PAGE_ALIGNED(addr) ((addr + PAGE_SIZE) & ~(PAGE_SIZE - 1))
 
 
 #define PAGE_FREE	0x1
@@ -148,6 +151,9 @@ extern int uvmumap_seg(int flag, tcb_t * t, PTE * pgdir);
 uintptr_t shm_page_get(int key);
 void shm_page_dt(uintptr_t addr);
 int mprotect(void *addr, size_t len, int prot);
+
+extern int brk(void *addr);
+extern void *sbrk(intptr_t increment);
 
 
 extern ptr_t kalloc(int byte_num, int flags);

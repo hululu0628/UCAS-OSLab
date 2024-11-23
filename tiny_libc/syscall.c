@@ -301,4 +301,14 @@ int mprotect(void *addr, size_t len, int prot)
 {
 	invoke_syscall(SYSCALL_MPROTECT, (long)addr, (long)len, (long)prot, 0, 0);
 }
+
+int brk(void *addr)
+{
+	return invoke_syscall(SYSCALL_BRK, (long)addr, 0, 0, 0, 0);
+}
+
+void *sbrk(intptr_t increment)
+{
+	return (void *)invoke_syscall(SYSCALL_SBRK, (long)increment, 0, 0, 0, 0);
+}
 /************************************************************/

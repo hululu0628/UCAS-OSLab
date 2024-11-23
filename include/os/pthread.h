@@ -4,6 +4,7 @@
 #include <type.h>
 
 #define THREAD_STACK 0x10000
+#define THREAD_USTACK_SIZE 0x2000
 
 void pthread_create(pthread_t *thread,
                    void (*start_routine)(void*),

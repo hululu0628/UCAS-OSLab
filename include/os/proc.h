@@ -44,6 +44,8 @@
 
 #define FIND_TCB(name) ((tcb_t *)(name->tcb_ptr))	// find pcb
 
+#define MAX_USTACK_SIZE 0x200000
+
 /* used to save register infomation */
 typedef struct regs_context
 {
@@ -126,6 +128,9 @@ typedef struct pcb
 	int tcb_num;
 
 	int task_id;
+
+	ptr_t brk;
+	ptr_t brk_start;
 
 	uint32_t dt_size;
     

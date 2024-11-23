@@ -230,21 +230,21 @@ uint64_t get_kaddr(uint64_t va, PTE *pgdir, int level)
 		return (uint64_t)(pgdir + vpn2);
 	
 	if(!(pgdir[vpn2] & _PAGE_PRESENT))
-		return 0;
+		return (uint64_t)NULL;
 	pmd = (PTE *)pa2kva(get_pa(pgdir[vpn2]));
 
 	if(level == 1)
 		return (uint64_t)(pmd + vpn1);
 
 	if(!(pmd[vpn1] & _PAGE_PRESENT))
-		return 0;
+		return (uint64_t)NULL;
 	pt = (PTE *)pa2kva(get_pa(pmd[vpn1]));
 
 	if(level == 2)
 		return (uint64_t)(pt + vpn0);
 
 	if(!(pt[vpn0] & _PAGE_PRESENT))
-		return 0;
+		return (uint64_t)NULL;
 	return pa2kva(get_pa(pt[vpn0])) + (va & (NORMAL_PAGE_SIZE - 1));
 
 }
@@ -254,6 +254,7 @@ uint64_t get_kaddr(uint64_t va, PTE *pgdir, int level)
 int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 {
 	int i;
+	int pid = src_tcb->pid;
 	uint64_t kaddr;
 	uint64_t bits;
 	PTE *dest_pgdir, *src_pgdir;
@@ -262,8 +263,8 @@ int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 	src_pgdir = pcb[src_tcb->pid - 1].pgdir;
 
 	share_pgtable((uintptr_t)dest_pgdir, pa2kva(PGDIR_PA));
-	// 复制数据和代码段
-	for(i = 0; i < src_tcb->dt_size; i += PAGE_SIZE)
+	// 复制数据段、代码段和堆
+	for(i = 0; i < PAGE_ALIGNED(pcb[pid - 1].brk); i += PAGE_SIZE)
 	{
 		bits = get_attribute(*((PTE *)get_kaddr(USER_ENTRYPOINT + i, src_pgdir, 2)), TOTAL_FLAG_MASK);
 		kaddr = alloc_page_helper(USER_ENTRYPOINT + i, dest_pgdir, bits);
@@ -276,7 +277,7 @@ int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 		kaddr = alloc_page_helper(USER_STACK_ADDR - i - PAGE_SIZE, dest_pgdir, 
 				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_DIRTY | _PAGE_USER);
 		memcpy((uint8_t *)kaddr, 
-			(const uint8_t *)get_kaddr(USER_STACK_ADDR - i - PAGE_SIZE, src_pgdir, 3), PAGE_SIZE);
+			(const uint8_t *)get_kaddr(src_tcb->user_stack_base - i - PAGE_SIZE, src_pgdir, 3), PAGE_SIZE);
 
 	}
 	// 分配内核栈并清零
@@ -335,9 +336,9 @@ int uvmfree_seg(int flag, tcb_t * t, PTE * pgdir)
 	uint64_t size;
 	switch(flag)
 	{
-		case DATA_AND_TEXT_SEG: 
+		case DTH_SEG: 
 			va_start = USER_ENTRYPOINT;
-			size = t->dt_size;
+			size = PAGE_ALIGNED(pcb[t->pid - 1].brk) - USER_ENTRYPOINT;
 			break;
 		case USER_STACK_SEG: 
 			va_start = t->user_stack_base - t->us_size; 
@@ -363,9 +364,9 @@ int uvmumap_seg(int flag, tcb_t * t, PTE * pgdir)
 	PTE * pte;
 	switch(flag)
 	{
-		case DATA_AND_TEXT_SEG: 
+		case DTH_SEG: 
 			va_start = USER_ENTRYPOINT;
-			size = t->dt_size;
+			size = PAGE_ALIGNED(pcb[t->pid - 1].brk) - USER_ENTRYPOINT;
 			break;
 		case USER_STACK_SEG: 
 			va_start = t->user_stack_base - t->us_size; 
@@ -528,4 +529,37 @@ int mprotect(void *addr, size_t len, int prot)
 	}
 	local_flush_tlb_all();
 	return 0;
+}
+
+int brk(void *addr)
+{
+	int pid = current_running->pid;
+	uint64_t brk = (uint64_t)addr;
+	if(brk > pcb[pid - 1].brk_start && brk < (USER_STACK_ADDR - MAX_USTACK_SIZE))
+	{
+		pcb[pid - 1].brk = brk;
+	}
+	else
+	{
+		printk("Invalid Address in function brk\n");
+		return -1;
+	}
+	return 0;
+}
+
+void *sbrk(intptr_t increment)
+{
+	int pid = current_running->pid;
+	uint64_t brk_increment = increment;
+	void * old_brk = (void *)pcb[pid - 1].brk;
+	if(pcb[pid - 1].brk + brk_increment < (USER_STACK_ADDR - MAX_USTACK_SIZE))
+	{
+		pcb[pid - 1].brk += brk_increment;
+	}
+	else
+	{
+		printk("Invalid Address in function sbrk\n");
+		return (void *)-1;
+	}
+	return (void *)old_brk;
 }
