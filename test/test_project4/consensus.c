@@ -57,7 +57,6 @@ int main(int argc, char* argv[])
         printf("shmpageget failed!\n");
         return -1;
     }
-
     // test shmpagedt()
     sys_shmpagedt((void*)vars);
     // touch previous page, OS should insert a page for us

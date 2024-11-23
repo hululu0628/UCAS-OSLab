@@ -296,4 +296,9 @@ void sys_shmpagedt(void *addr)
 	/* TODO: [p4-task4] call invoke_syscall to implement sys_shmpagedt */
 	invoke_syscall(SYSCALL_SHM_DT, (long)addr, 0, 0, 0, 0);
 }
+
+int mprotect(void *addr, size_t len, int prot)
+{
+	invoke_syscall(SYSCALL_MPROTECT, (long)addr, (long)len, (long)prot, 0, 0);
+}
 /************************************************************/

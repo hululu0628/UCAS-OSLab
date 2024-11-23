@@ -58,6 +58,7 @@ int swap_out(void)
 {
 	uint64_t start;
 	uint64_t slot_index;
+	uint32_t flags;
 	PTE * pte;
 
 	// 需要重复两轮，且理论上至多两轮
@@ -66,13 +67,21 @@ int swap_out(void)
 		// 查找A = 0，D = 0的USER页框，发现直接将该页释放，然后退出
 		for(start = 0; start < PAGE_NUM - DYNAMIC_START - (CPU_NUM << 1); start ++)
 		{
+			// check if the page attribute is invalid or reserved
+			if(!(pages[clock_hand].flags & UNFREE_FLAG) || 
+				(pages[clock_hand].flags & RESERVED_FLAG))
+			{
+				clock_hand++;
+				continue;
+			}
+
 			pte = pages[clock_hand].pte;
 			// for qemu
-			pages[clock_hand].flags = get_attribute(*pte, TOTAL_FLAG_MASK);
+			flags = get_attribute(*pte, TOTAL_FLAG_MASK);
 
-			if(!(pages[clock_hand].flags & ACCESS_FLAG) && 
-			   !(pages[clock_hand].flags & DIRTY_FLAG) && 
-			    (pages[clock_hand].flags & USER_FLAG) )
+			if(!(flags & ACCESS_FLAG) && 
+			   !(flags & DIRTY_FLAG) && 
+			    (flags & USER_FLAG) )
 			{
 				*pte = 0;
 				freePage(GET_KADDR(pages[clock_hand].page_num));
@@ -92,13 +101,21 @@ int swap_out(void)
 		// 对于扫描到的A = 1的页框，将A设为0。
 		for(start = 0; start < PAGE_NUM - DYNAMIC_START - (CPU_NUM << 1); start++)
 		{
+			if(!(pages[clock_hand].flags & UNFREE_FLAG) || 
+				(pages[clock_hand].flags & RESERVED_FLAG))
+			{
+				clock_hand++;
+				continue;
+			}
+
+
 			pte = pages[clock_hand].pte;
 			// for qemu
-			pages[clock_hand].flags = get_attribute(*pte, TOTAL_FLAG_MASK);
+			flags = get_attribute(*pte, TOTAL_FLAG_MASK);
 			
-			if(!(pages[clock_hand].flags & ACCESS_FLAG) && 
-			    (pages[clock_hand].flags & DIRTY_FLAG) && 
-			    (pages[clock_hand].flags & USER_FLAG) )
+			if(!(flags & ACCESS_FLAG) && 
+			    (flags & DIRTY_FLAG) && 
+			    (flags & USER_FLAG) )
 			{
 				slot_index = get_swap_page();
 				set_swap_entry(pte, slot_index);
@@ -112,9 +129,9 @@ int swap_out(void)
 					clock_hand = DYNAMIC_START + (CPU_NUM << 1);
 				return 0;
 			}
-			else if(pages[clock_hand].flags & ACCESS_FLAG)
+			else if(flags & ACCESS_FLAG)
 			{
-				pages[clock_hand].flags &= ~ACCESS_FLAG;
+				// pages[clock_hand].flags &= ~ACCESS_FLAG;
 				clear_attribute(pte, _PAGE_ACCESSED);
 			}
 			clock_hand++;

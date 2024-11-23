@@ -65,6 +65,16 @@ pageframe * allocPgtabPage()
 	return t;
 }
 
+void set_pageframe_flag(pageframe * t, uint32_t bits)
+{
+	t->flags |= bits;
+}
+
+void clear_pageframe_flag(pageframe * t, uint32_t bits)
+{
+	t->flags &= ~bits;
+}
+
 // 0x52000000~0x60000000 for dynamic allocation
 // some pages were allocated for kernel satck
 pageframe * allocDynPage()
@@ -158,7 +168,7 @@ uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 		change_attribute(&pgdir[vpn2], _PAGE_PRESENT);
 
 		t->pte = &pgdir[vpn2];
-		t->flags |= UNFREE_FLAG;
+		set_pageframe_flag(t, UNFREE_FLAG);
 	}
 
 	PTE * pmd = (PTE *)pa2kva(get_pa(pgdir[vpn2]));
@@ -173,7 +183,7 @@ uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 		change_attribute(&pmd[vpn1], _PAGE_PRESENT);
 
 		t->pte = &pmd[vpn1];
-		t->flags |= UNFREE_FLAG;
+		set_pageframe_flag(t, UNFREE_FLAG);
 	}
 
 	PTE * pt = (PTE *)pa2kva(get_pa(pmd[vpn1]));
@@ -192,7 +202,7 @@ uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 		change_attribute(&pt[vpn0], bits);
 
 		t->pte = &pt[vpn0];
-		t->flags |= bits;
+		set_pageframe_flag(t, bits);
 
 		return kaddr;
 	}
@@ -434,7 +444,7 @@ uintptr_t shm_page_get(int key)
 	if(shm_array[i].page_num == 0)
 	{
 		t = allocDynPage();
-		t->flags = bits;
+		set_pageframe_flag(t, bits | RESERVED_FLAG);
 
 		shm_array[i].page_num = t->page_num;
 		shm_array[i].key = key;
@@ -485,4 +495,37 @@ void shm_page_dt(uintptr_t addr)
 		}
 	}
 	local_flush_tlb_all();
+}
+
+int mprotect(void *addr, size_t len, int prot)
+{
+	uint64_t i;
+	uint64_t va = (uint64_t)addr;
+	PTE * pgdir = pcb[current_running->pid - 1].pgdir;
+	PTE * pte;
+	if(va & ((1 << NORMAL_PAGE_SHIFT) - 1))
+	{
+		printk("ERROR: Address must be 4096 Byte aligned\n");
+		return -1;
+	}
+	if(len & ((1 << NORMAL_PAGE_SHIFT) - 1))
+	{
+		printk("ERROR: Length must be 4096 Byte aligned\n");
+		return -1;
+	}
+
+	for(i = 0; i < len; i += PAGE_SIZE)
+	{
+		pte = (PTE *)get_kaddr(va, pgdir, 2);
+		if(pte == 0 || *pte == 0)
+		{
+			alloc_page_helper(va, pgdir, _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER);
+			pte = (PTE *)get_kaddr(va, pgdir, 2);
+		}
+		clear_attribute(pte, PROT_READ | PROT_WRITE | PROT_EXEC);
+		set_attribute(pte, prot & (PROT_READ | PROT_WRITE | PROT_EXEC));
+		va += PAGE_SIZE;
+	}
+	local_flush_tlb_all();
+	return 0;
 }

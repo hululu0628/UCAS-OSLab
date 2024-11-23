@@ -78,6 +78,7 @@ int pthread_join(pthread_t thread);
 /* shmpageget/dt */
 void* sys_shmpageget(int key);
 void sys_shmpagedt(void *addr);
+int mprotect(void *addr, size_t len, int prot);
 /************************************************************/
 
 #endif

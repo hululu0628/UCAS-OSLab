@@ -60,6 +60,14 @@
 #define DIRTY_FLAG (1 << 7)    /* Set by hardware on any write */
 #define SOFT_FLAG (1 << 8)     /* Reserved for software */
 
+#define RESERVED_FLAG (1 << 9) /* should not be swapped out */
+
+/* for mprotect */
+#define PROT_NONE (~(0x7 << 1))
+#define PROT_READ (1 << 1)
+#define PROT_WRITE (1 << 2)
+#define PROT_EXEC (1 << 3)
+
 /* Rounding; only works for n = power of two */
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
 #define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
@@ -93,6 +101,9 @@ typedef struct shared_mem
 shm shm_array[MAX_SHM_NUM];
 
 extern void init_page(void);
+
+extern void set_pageframe_flag(pageframe * t, uint32_t bits);
+extern void clear_pageframe_flag(pageframe * t, uint32_t bits);
 
 extern pageframe * allocPgtabPage();
 extern pageframe * allocDynPage();
@@ -136,6 +147,7 @@ extern int uvmumap_seg(int flag, tcb_t * t, PTE * pgdir);
 // TODO [P4-task4]: shm_page_get/dt */
 uintptr_t shm_page_get(int key);
 void shm_page_dt(uintptr_t addr);
+int mprotect(void *addr, size_t len, int prot);
 
 
 extern ptr_t kalloc(int byte_num, int flags);
