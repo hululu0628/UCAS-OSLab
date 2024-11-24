@@ -123,6 +123,8 @@ static inline void load_init()
 			
 		init_pcb_stack(kernel_stack, kusr_stack, USER_ENTRYPOINT, &tcb[0],1,init_argv);
 
+		pcb[0].brk_start = USER_ENTRYPOINT + page_number * PAGE_SIZE;
+		pcb[0].brk = pcb[0].brk_start;
 		pcb[0].dt_size = page_number * PAGE_SIZE;
 		pcb[0].tcb_num = 1;
 

@@ -207,7 +207,7 @@ uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 		return kaddr;
 	}
 	else
-		_panic("mm.c", 149, "alloc_page_helper");
+		assert(0);
 	return 0;
 }
 
@@ -264,7 +264,7 @@ int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 
 	share_pgtable((uintptr_t)dest_pgdir, pa2kva(PGDIR_PA));
 	// 复制数据段、代码段和堆
-	for(i = 0; i < PAGE_ALIGNED(pcb[pid - 1].brk); i += PAGE_SIZE)
+	for(i = 0; i < PAGE_ALIGNED(pcb[pid - 1].brk) - USER_ENTRYPOINT; i += PAGE_SIZE)
 	{
 		bits = get_attribute(*((PTE *)get_kaddr(USER_ENTRYPOINT + i, src_pgdir, 2)), TOTAL_FLAG_MASK);
 		kaddr = alloc_page_helper(USER_ENTRYPOINT + i, dest_pgdir, bits);

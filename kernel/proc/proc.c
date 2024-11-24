@@ -205,7 +205,6 @@ pid_t do_fork(void)
 	init_switch_to(PAGE_SIZE + get_kaddr(KERNEL_STACK_ADDR - PAGE_SIZE, pcb[pid - 1].pgdir, 3), &tcb[i]);
 
 	// one page offset from the end of data segment to brk_start, for protection
-	mprotect((void *)(USER_ENTRYPOINT + (uint64_t)current_running->dt_size), PAGE_SIZE, PROT_NONE);
 	pcb[pid - 1].brk_start = pcb[current_running->pid - 1].brk_start;
 	pcb[pid - 1].brk = pcb[current_running->pid - 1].brk;
 
@@ -320,14 +319,10 @@ void do_exec(char *name, int argc, char **argv)
 		current_running->trapframe.regs[A0] = (reg_t)kargc;
 		current_running->trapframe.regs[A1] = (reg_t)(USER_STACK_ADDR - (kustack_start - argv_base));
 
-		// if not, do not modify brk_start and brk
-		if(current_running->dt_size < page_number * PAGE_SIZE)
-		{
-			mprotect((void *)(USER_ENTRYPOINT + (uint64_t)page_number * PAGE_SIZE), PAGE_SIZE, PROT_NONE);
-			
-			pcb[pid - 1].brk_start = USER_ENTRYPOINT + page_number * PAGE_SIZE + PAGE_SIZE;
-			pcb[pid - 1].brk = pcb[pid - 1].brk_start;
-		}
+
+		pcb[pid - 1].brk_start = USER_ENTRYPOINT + page_number * PAGE_SIZE;
+		pcb[pid - 1].brk = pcb[pid - 1].brk_start;
+
 
 		current_running->dt_size = page_number * PAGE_SIZE;
 		current_running->ks_size = PAGE_SIZE;

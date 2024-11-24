@@ -1,4 +1,5 @@
-#include "csr.h"
+#include "pgtable.h"
+#include <csr.h>
 #include <os/pthread.h>
 #include <os/proc.h>
 #include <os/mm.h>
@@ -50,8 +51,8 @@ void pthread_create(pthread_t *thread, void (*start_routine)(void*), void *arg)
 	// allocate for user stack
 	for(int j = 0; j < tcb[tidx].us_size + PAGE_SIZE; j += PAGE_SIZE)
 	{
-		alloc_page_helper(tcb[j].user_stack_base - PAGE_SIZE - j, pcb[pid - 1].pgdir, 
-			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY);
+		alloc_page_helper(tcb[tidx].user_stack_base - PAGE_SIZE - j, pcb[pid - 1].pgdir, 
+			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY | _PAGE_USER);
 	}
 	mprotect((void *)(tcb[tidx].user_stack_base - PAGE_SIZE - THREAD_USTACK_SIZE), PAGE_SIZE, PROT_NONE);
 	

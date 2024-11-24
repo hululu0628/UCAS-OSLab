@@ -25,6 +25,10 @@
 #ifndef _STDINT_H_
 #define _STDINT_H_
 
+#ifndef NULL
+#define NULL 	((void*)0)
+#endif
+
 typedef unsigned __attribute__((__mode__(QI))) int8_t;
 typedef unsigned __attribute__((__mode__(QI))) uint8_t;
 typedef int      __attribute__((__mode__(HI))) int16_t;

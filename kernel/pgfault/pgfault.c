@@ -110,7 +110,7 @@ void handle_store_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 	uint64_t bits;
 	uint64_t kaddr;
 	bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER;
-	printl("load fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
+	printl("store fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
 
 	// If the address valid?
 	if(stval >= pcb[pid - 1].brk && stval < (USER_STACK_ADDR - MAX_USTACK_SIZE))
@@ -201,7 +201,7 @@ void handle_instr_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 	uint64_t bits;
 	uint64_t kaddr;
 	bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER;
-	printl("load fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
+	printl("instruction page fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
 
 	// If the address valid?
 	if(stval >= pcb[pid - 1].brk && stval < (USER_STACK_ADDR - MAX_USTACK_SIZE))

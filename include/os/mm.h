@@ -73,7 +73,7 @@
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
 #define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
 
-#define PAGE_ALIGNED(addr) ((addr + PAGE_SIZE) & ~(PAGE_SIZE - 1))
+#define PAGE_ALIGNED(addr) ((addr + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
 
 
 #define PAGE_FREE	0x1
