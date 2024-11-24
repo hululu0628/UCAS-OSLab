@@ -150,6 +150,7 @@ ENTRY(switch_pgtable)
 	sfence.vma
 	csrw 	satp,a0
 	sfence.vma
+	fence.i
 	jr 	ra
 ENDPROC(switch_pgtable)
 

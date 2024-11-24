@@ -5,7 +5,9 @@ int main()
 	char *shell_argv[shell_argc];
 	shell_argv[0] = "shell";
 	if(sys_fork() == 0)
+	{
 		sys_exec("shell",shell_argc,shell_argv);
+	}
 	while(1)
 	{
 		// restart shell

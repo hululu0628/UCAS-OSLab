@@ -81,6 +81,8 @@ void do_scheduler(void)
 
 	current_running->current_core_id = current_cpuid;
 
+	printl("pid %d, id %d\n",current_running->pid,current_cpuid);
+
 	process_id[current_cpuid] = current_running->pid;
 	thread_id[current_cpuid] = current_running->tid;
 	current_running->status = TASK_RUNNING;
@@ -93,8 +95,21 @@ void do_scheduler(void)
 	if(prev_thread->pid == current_running->pid)
 		switch_thread(prev_thread, current_running);
 	else
-		switch_proc(prev_thread,current_running,
-			&pcb[prev_thread->pid - 1],&pcb[current_running->pid - 1]);
+	{
+		pcb_t *prev_pcb_ptr, *curr_pcb_ptr;
+
+		if(prev_thread->pid == 0)
+			prev_pcb_ptr = &pid0_pcb[current_cpuid];
+		else
+			prev_pcb_ptr = &pcb[prev_thread->pid - 1];
+
+		if(current_running->pid == 0)
+			curr_pcb_ptr = &pid0_pcb[current_cpuid];
+		else
+			curr_pcb_ptr = &pcb[current_running->pid - 1];
+	
+		switch_proc(prev_thread,current_running,prev_pcb_ptr,curr_pcb_ptr);
+	}
 }
 
 void do_sleep(uint32_t sleep_time)
@@ -222,7 +237,6 @@ pid_t do_fork(void)
 
 	tcb[i].status = TASK_READY;
 	addToQueue(&tcb[i].list,&ready_queue);
-
 	return pid;
 }
 
@@ -333,6 +347,7 @@ void do_exec(char *name, int argc, char **argv)
 		// modified third level page table,
 		// therefore the tlb must be reflushed
 		local_flush_tlb_all();
+		local_flush_icache_all();
 	}
 }
 

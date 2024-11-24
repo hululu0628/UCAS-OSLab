@@ -57,6 +57,7 @@ pageframe * allocPgtabPage()
 	t = free_list_pgtab;
 	if(t)
 	{
+		clear_pgdir(GET_KADDR(t->page_num));
 		free_list_pgtab = free_list_pgtab->next;
 		t->next = NULL;
 		t->ref_cnt++;
@@ -207,7 +208,10 @@ uintptr_t alloc_page_helper(uintptr_t va, PTE * pgdir, uint64_t bits)
 		return kaddr;
 	}
 	else
+	{
+		printk("va %lx, pt[vpn0]: %lx\n",va,pt[vpn0]);
 		assert(0);
+	}
 	return 0;
 }
 
@@ -263,6 +267,11 @@ int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 	src_pgdir = pcb[src_tcb->pid - 1].pgdir;
 
 	share_pgtable((uintptr_t)dest_pgdir, pa2kva(PGDIR_PA));
+
+	// (T_T)
+	dest_pgdir[TEMP_IDX] = 0;
+	
+	
 	// 复制数据段、代码段和堆
 	for(i = 0; i < PAGE_ALIGNED(pcb[pid - 1].brk) - USER_ENTRYPOINT; i += PAGE_SIZE)
 	{
@@ -436,6 +445,7 @@ uintptr_t shm_page_get(int key)
 {
 	// TODO [P4-task5] shm_page_get:
 	int i = key % MAX_SHM_NUM;
+	int pid = current_running->pid;
 	pageframe * t;
 	uint64_t va,kaddr,kaddr1;
 	uint64_t bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER;
@@ -460,7 +470,8 @@ uintptr_t shm_page_get(int key)
 		pages[shm_array[i].page_num].ref_cnt++;
 	}
 
-	for(va = SM_START; va < USER_STACK_ADDR; va += PAGE_SIZE)
+	va = PAGE_ALIGNED(pcb[pid - 1].brk);
+	if(brk((void *)(va + PAGE_SIZE)) == 0)
 	{
 		if(get_kaddr(va, pgdir, 3) == 0)
 		{

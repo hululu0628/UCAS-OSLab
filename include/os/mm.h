@@ -34,6 +34,8 @@
 #define MAP_USER 2
 #define MEM_SIZE 32
 
+#define TEMP_IDX 1
+
 #define PAGE_SIZE 4096 // 4K
 #define PAGE_SHIFT 12lu
 #define PT_NUM 512

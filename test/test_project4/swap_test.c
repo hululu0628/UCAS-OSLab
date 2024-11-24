@@ -17,7 +17,8 @@ int main(void)
 	uintptr_t mem1 = 0;
 	int curs = 0;
 	int i;
-	sys_move_cursor(2, 2);
+	sys_move_cursor(2, 0);
+	brk(TEST_ADDR + 4097 * NUM);
 	for (i = 0; i < NUM; i++)
 	{
 		

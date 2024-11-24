@@ -17,6 +17,7 @@ void trap_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 	// call corresponding handler by the value of `scause`
 
 	uint64_t cause = scause & ~INTERRUPT;		// get exception code
+	printl("scause: %lx\n",scause);
 	if(scause & INTERRUPT)				// Is interrupt?
 		(irq_table[cause])(regs,stval,scause);
 	else

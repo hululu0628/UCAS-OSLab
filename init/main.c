@@ -129,6 +129,7 @@ static inline void load_init()
 		pcb[0].tcb_num = 1;
 
 		tcb[0].pid = 1;
+		tcb[0].tid = 1;
 		tcb[0].dt_size = page_number * PAGE_SIZE;
 		tcb[0].ks_size = PAGE_SIZE;
 		tcb[0].us_size = PAGE_SIZE;
@@ -334,7 +335,6 @@ int main(void)
 			(unsigned int)get_current_cpu_id());
 		// TODO: [p4-task1 cont.] remove the brake and continue to start user processes.
 		//kernel_brake();
-
 	}
 	else
 	{

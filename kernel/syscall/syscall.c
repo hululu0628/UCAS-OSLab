@@ -1,6 +1,7 @@
 #include <sys/syscall.h>
 #include <asm/regs.h>
 #include <asm/unistd.h>
+#include <printk.h>
 
 long (*syscall[NUM_SYSCALLS])();
 

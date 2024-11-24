@@ -200,7 +200,7 @@ void handle_instr_pgfault(regs_context_t *regs, uint64_t stval, uint64_t scause)
 	PTE * pte;
 	uint64_t bits;
 	uint64_t kaddr;
-	bits = _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_USER;
+	bits = _PAGE_PRESENT | _PAGE_EXEC | _PAGE_USER;
 	printl("instruction page fault sepc: 0x%lx stval: 0x%lx\n",current_running->trapframe.sepc,stval);
 
 	// If the address valid?

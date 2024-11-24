@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    sys_sleep(2);
+    sys_sleep(1);
 
     sys_barrier_wait(vars->barrier);
     pid_t mypid = sys_getpid();
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
     printf("ConsensusTask(%d) is ready at line %d!\n", mypid, print_location);
     pid_t consensus = 0;
     sys_barrier_wait(vars->barrier);
-    sys_sleep(2);
+    sys_sleep(1);
     int myround = 0;
 
     while (1) {
@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
             printf("(%d) I am selected at round %d                      \n",
                    consensus, myround);
         }
-        sys_sleep(2);
+        sys_sleep(1);
         sys_barrier_wait(vars->barrier);
         if (atomic_load(&vars->round) == NUM_CONSENSUS + 1) {
             break;
