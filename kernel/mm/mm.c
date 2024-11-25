@@ -119,7 +119,7 @@ void freePage(ptr_t baseAddr)
 			pages[i].flags = 0;
 			pages[i].pte = NULL;
 			free_list_proc = &pages[i];
-
+			clear_pgdir(baseAddr);
 			printl("Free %lx\n",baseAddr);
 		}
 	}

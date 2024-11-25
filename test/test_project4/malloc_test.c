@@ -1,7 +1,10 @@
 #include <mm.h>
 #include <assert.h>
+#include <unistd.h>
+// 感谢GPT-4o开源
 int main(void)
 {
+	sys_move_cursor(0, 0);
 	printf("=== Testing malloc and free ===\n");
 
 	// 1. 测试基本分配和释放

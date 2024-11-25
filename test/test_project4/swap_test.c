@@ -10,6 +10,7 @@
 #define TEST_ADDR 0x500000
 #define PAGE_SHIFT 12
 
+// 仅能验证基本的换入换出
 int main(void)
 {
 	srand(clock());

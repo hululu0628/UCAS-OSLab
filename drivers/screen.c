@@ -13,26 +13,54 @@
 char new_screen[SCREEN_HEIGHT * SCREEN_WIDTH] = {0};
 char old_screen[SCREEN_HEIGHT * SCREEN_WIDTH] = {0};
 
-
+char curbuf[10];
 /* cursor position */
 static void vt100_move_cursor(int x, int y)
 {
     // \033[y;xH
-    printv("%c[%d;%dH", 27, y, x);
+    	// printv("%c[%d;%dH", 27, y, x);
+	
+	int i;
+	curbuf[0] = 27; curbuf[1] = '[';
+	if(y < 10)
+	{
+		curbuf[2] = y + '0';
+		i = 3;
+	}
+	else
+	{
+		curbuf[2] = (y / 10) + '0';
+		curbuf[3] = (y % 10) + '0';
+		i = 4;
+	}
+	curbuf[i] = ';';i++;
+	if(x < 10)
+	{
+		curbuf[i] = x + '0';
+		i++;
+	}
+	else
+	{
+		curbuf[i++] = (x / 10) + '0';
+		curbuf[i++] = (x % 10) + '0';
+	}
+	curbuf[i++] = 'H';
+	curbuf[i] = '\0';
+	bios_putstr(curbuf);
 }
 
 /* clear screen */
 static void vt100_clear()
 {
     // \033[2J
-    printv("%c[2J", 27);
+    bios_putstr("\033[2J");
 }
 
 /* hidden cursor */
 static void vt100_hidden_cursor()
 {
     // \033[?25l
-    printv("%c[?25l", 27);
+    bios_putstr("\033[?25l");
 }
 
 /* write a char */
@@ -157,7 +185,6 @@ void screen_reflush(void)
 {
 	int pid = current_running->pid;
 	int i, j;
-
 	/* here to reflush screen buffer to serial port */
 	for (i = 0; i < SCREEN_HEIGHT; i++)
 	{

@@ -303,7 +303,14 @@ int printv(const char *fmt, ...)
     va_list va;
 
     va_start(va, fmt);
-    ret = _vprint(fmt, va, bios_putstr);
+    //ret = _vprint(fmt, va, bios_putstr);
+	char buff[256];
+
+    ret = mini_vsnprintf(buff, 256, fmt, va);
+
+    buff[ret] = '\0';
+    bios_putstr(buff);
+    //bios_putstr(fmt);
     va_end(va);
 
     return ret;

@@ -81,7 +81,7 @@ static inline void load_init()
 	uint64_t kaddr;
 	pageframe * t;
 
-	char *init_argv[1];
+	char*init_argv[1];
 	init_argv[0] = "init";
 
 	if(task_id != -1)
@@ -357,6 +357,7 @@ int main(void)
 	//enable_interrupt();
 
 	bios_set_timer(get_ticks() + TIMER_INTERVAL);
+	//printk("test kernel\na");
 
 
 	// Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
