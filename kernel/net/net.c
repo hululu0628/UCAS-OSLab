@@ -1,6 +1,6 @@
 #include <e1000.h>
 #include <type.h>
-#include <os/sched.h>
+#include <os/proc.h>
 #include <os/string.h>
 #include <os/list.h>
 #include <os/smp.h>

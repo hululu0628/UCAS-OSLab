@@ -20,7 +20,6 @@
 #include <csr.h>
 #include <os/irq.h>
 #include <printk.h>
-
 #include <plic.h>
 
 static void *plic_regs;

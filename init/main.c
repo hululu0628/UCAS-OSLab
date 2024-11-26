@@ -1,6 +1,8 @@
 #include <pgtable.h>
 #include <common.h>
 #include <screen.h>
+#include <os/net.h>
+#include <os/ioremap.h>
 #include <e1000.h>
 #include <printk.h>
 #include <assert.h>
@@ -232,11 +234,16 @@ static void init_syscall(void)
 	syscall[SYSCALL_PTHREAD_CREATE] = (long (*)())pthread_create;
 	syscall[SYSCALL_PTHREAD_JOIN] 	= (long (*)())pthread_join;
 
+	// memory management
 	syscall[SYSCALL_SHM_GET]	= (long (*)())shm_page_get;
 	syscall[SYSCALL_SHM_DT]		= (long (*)())shm_page_dt;
 	syscall[SYSCALL_MPROTECT]	= (long (*)())mprotect;
 	syscall[SYSCALL_BRK]		= (long (*)())brk;
 	syscall[SYSCALL_SBRK]		= (long (*)())sbrk;
+
+	// net
+	syscall[SYSCALL_NET_SEND]	= (long (*)())do_net_send;
+	syscall[SYSCALL_NET_RECV]	= (long (*)())do_net_recv;
 }
 
 /*
@@ -297,17 +304,21 @@ int main(void)
 		
 		printk("> [INIT] PCB initialization succeeded.\n");
 
-    // Read Flatten Device Tree (｡•ᴗ-)_
-    time_base = bios_read_fdt(TIMEBASE);
-    e1000 = (volatile uint8_t *)bios_read_fdt(EHTERNET_ADDR);
-    uint64_t plic_addr = bios_read_fdt(PLIC_ADDR);
-    uint32_t nr_irqs = (uint32_t)bios_read_fdt(NR_IRQS);
-    printk("> [INIT] e1000: %lx, plic_addr: %lx, nr_irqs: %lx.\n", e1000, plic_addr, nr_irqs);
 
-    // IOremap
-    plic_addr = (uintptr_t)ioremap((uint64_t)plic_addr, 0x4000 * NORMAL_PAGE_SIZE);
-    e1000 = (uint8_t *)ioremap((uint64_t)e1000, 8 * NORMAL_PAGE_SIZE);
-    printk("> [INIT] IOremap initialization succeeded.\n");
+
+		// Read Flatten Device Tree (｡•ᴗ-)_
+		time_base = bios_read_fdt(TIMEBASE);
+		e1000 = (volatile uint8_t *)bios_read_fdt(ETHERNET_ADDR);
+		uint64_t plic_addr = bios_read_fdt(PLIC_ADDR);
+		uint32_t nr_irqs = (uint32_t)bios_read_fdt(NR_IRQS);
+		printk("> [INIT] e1000: %lx, plic_addr: %lx, nr_irqs: %lx.\n", e1000, plic_addr, nr_irqs);
+
+		// IOremap
+		plic_addr = (uintptr_t)ioremap((uint64_t)plic_addr, 0x4000 * NORMAL_PAGE_SIZE);
+		e1000 = (uint8_t *)ioremap((uint64_t)e1000, 8 * NORMAL_PAGE_SIZE);
+		printk("> [INIT] IOremap initialization succeeded.\n");
+
+
 
 		// Init lock mechanism o(´^｀)o
 		init_ipc();
@@ -317,6 +328,10 @@ int main(void)
 		init_trap();
 		printk("> [INIT] Interrupt processing initialization succeeded.\n");
 
+		// Init network device ( 0_o)
+		e1000_init();
+		printk("> [INIT] E1000 device initialized successfully.\n");
+
 		// Init system call table (0_0)
 		init_syscall();
 		printk("> [INIT] System call initialized successfully.\n");
@@ -325,11 +340,13 @@ int main(void)
 		init_screen();
 		//printk("> [INIT] SCREEN initialization succeeded.\n");
 
-		// Init data for page swaping
+		// Init data for page swaping ( * ^ *)o④
 		init_swap();
 
+		// load the first user task
 		load_init();
 
+		// wake up the slave core
 		wakeup_other_hart();
 		#ifndef M_CORE
 		cleanTempPgtab();
@@ -344,7 +361,7 @@ int main(void)
 		printl("> [INIT] CPU #%u has entered kernel with VM!\n",
 			(unsigned int)get_current_cpu_id());
 		// TODO: [p4-task1 cont.] remove the brake and continue to start user processes.
-		//kernel_brake();
+		// kernel_brake();
 	}
 	else
 	{

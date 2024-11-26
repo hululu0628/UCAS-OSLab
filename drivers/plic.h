@@ -2,7 +2,7 @@
 #define PLIC_H
 
 #include <type.h>
-#include <os/sched.h>
+#include <os/proc.h>
 
 struct plic_handler {
 	bool		present;
