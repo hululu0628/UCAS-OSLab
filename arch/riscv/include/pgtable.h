@@ -142,4 +142,16 @@ static inline void clear_pgdir(uintptr_t pgdir_addr)
 	}
 }
 
+/* 
+ * query the page table stored in pgdir_va to obtain the physical 
+ * address corresponding to the virtual address va.
+ * 
+ * return the kernel virtual address of the physical address 
+ */
+static inline uintptr_t get_kva_of(uintptr_t va, uintptr_t pgdir_va)
+{
+    // TODO: [P4-task1] (todo if you need)
+}
+
+
 #endif  // PGTABLE_H

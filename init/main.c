@@ -1,6 +1,7 @@
 #include <pgtable.h>
 #include <common.h>
 #include <screen.h>
+#include <e1000.h>
 #include <printk.h>
 #include <assert.h>
 #include <type.h>
@@ -296,8 +297,17 @@ int main(void)
 		
 		printk("> [INIT] PCB initialization succeeded.\n");
 
-		// Read CPU frequency (｡•ᴗ-)_
-		time_base = bios_read_fdt(TIMEBASE);
+    // Read Flatten Device Tree (｡•ᴗ-)_
+    time_base = bios_read_fdt(TIMEBASE);
+    e1000 = (volatile uint8_t *)bios_read_fdt(EHTERNET_ADDR);
+    uint64_t plic_addr = bios_read_fdt(PLIC_ADDR);
+    uint32_t nr_irqs = (uint32_t)bios_read_fdt(NR_IRQS);
+    printk("> [INIT] e1000: %lx, plic_addr: %lx, nr_irqs: %lx.\n", e1000, plic_addr, nr_irqs);
+
+    // IOremap
+    plic_addr = (uintptr_t)ioremap((uint64_t)plic_addr, 0x4000 * NORMAL_PAGE_SIZE);
+    e1000 = (uint8_t *)ioremap((uint64_t)e1000, 8 * NORMAL_PAGE_SIZE);
+    printk("> [INIT] IOremap initialization succeeded.\n");
 
 		// Init lock mechanism o(´^｀)o
 		init_ipc();
