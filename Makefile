@@ -149,6 +149,7 @@ run-smp:
 	$(QEMU) $(QEMU_OPTS) $(QEMU_SMP_OPT)
 
 run-smpc: run-smp cursor
+
 run-net:
 	-@sudo kill `sudo lsof | grep tun | awk '{print $$2}'`
 	sudo $(QEMU) $(QEMU_OPTS) $(QEMU_NET_OPT) $(QEMU_SMP_OPT)
@@ -161,6 +162,7 @@ debug-smp:
 
 cursor:
 	echo -e "\033[?25h" && clear
+	
 debug-net:
 	-@sudo kill `sudo lsof | grep tun | awk '{print $$2}'`
 	sudo $(QEMU) $(QEMU_OPTS) $(QEMU_DEBUG_OPT) $(QEMU_NET_OPT) $(QEMU_SMP_OPT)
