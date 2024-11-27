@@ -131,7 +131,7 @@ extern ptr_t allocLargePage(int numPage);
 
 // NOTE: A/C-core
 #define USER_STACK_ADDR 0xf00010000
-#define KERNEL_STACK_ADDR 0x10000
+#define KERNEL_STACK_ADDR 0x8000
 
 #endif
 

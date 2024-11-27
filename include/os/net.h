@@ -15,8 +15,9 @@ struct ethhdr {
     uint16_t ether_type;            // protocol format
 };
 
-void net_handle_irq(void);
-int do_net_recv(void *rxbuffer, int pkt_num, int *pkt_lens);
-int do_net_send(void *txpacket, int length);
+extern void net_handle_irq(void);
+extern int do_net_recv(void *rxbuffer, int pkt_num, int *pkt_lens);
+extern int do_net_send(void *txpacket, int length);
 
+extern void check_send(void);
 #endif  // !__INCLUDE_NET_H__

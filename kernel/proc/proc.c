@@ -3,6 +3,7 @@
 #include <os/loader.h>
 #include <os/irq.h>
 #include <os/string.h>
+#include <os/net.h>
 #include <os/task.h>
 #include <csr.h>
 #include <asm/regs.h>
@@ -44,6 +45,7 @@ void do_scheduler(void)
 
 	/************************************************************/
 	// TODO: [p5-task3] Check send/recv queue to unblock PCBs
+	check_send();
 	/************************************************************/
 
 	// TODO: [p2-task1] Modify the current_running pointer.
@@ -293,7 +295,7 @@ void do_exec(char *name, int argc, char **argv)
 		for(uint64_t va = USER_ENTRYPOINT, i = 0; i < page_number; va += PAGE_SIZE, i++)
 		{
 			kaddr = alloc_page_helper(va, pgdir, _PAGE_PRESENT 
-				| _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_USER);
+				| _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY | _PAGE_USER);
 			if(block_num >= 8)
 				load_task_l(kaddr,block_id,8);
 			else

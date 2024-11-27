@@ -1,8 +1,8 @@
 make clean
 make all
-if [ "$1" == "smp" ];then
-	make run-smp
+if [ "$1" == "net" ];then
+	make run-net
 else
-	make run
+	make run-smp
 fi
 make cursor

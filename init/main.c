@@ -103,7 +103,7 @@ static inline void load_init()
 		for(uint64_t va = USER_ENTRYPOINT, i = 0; i < page_number; va += PAGE_SIZE, i++)
 		{
 			kaddr = alloc_page_helper(va, pgdir, _PAGE_PRESENT 
-				| _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_USER);
+				| _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY | _PAGE_USER);
 			if(block_num >= 8)
 				load_task_l(kaddr,block_id,8);
 			else
@@ -208,24 +208,24 @@ static void init_syscall(void)
 	syscall[SYSCALL_GET_TIMEBASE] 	= (long (*)())get_time_base;
 	syscall[SYSCALL_GET_TICK] 	= (long (*)())get_ticks;
 
-	// mutex
+	// ipc-mutex
 	syscall[SYSCALL_LOCK_INIT] 	= (long (*)())do_mutex_lock_init;
 	syscall[SYSCALL_LOCK_ACQ] 	= (long (*)())do_mutex_lock_acquire;
 	syscall[SYSCALL_LOCK_RELEASE]	= (long (*)())do_mutex_lock_release;
 	
-	// barrier
+	// ipc-barrier
 	syscall[SYSCALL_BARR_INIT]	= (long (*)())do_barrier_init;
 	syscall[SYSCALL_BARR_WAIT]	= (long (*)())do_barrier_wait;
 	syscall[SYSCALL_BARR_DESTROY]	= (long (*)())do_barrier_destroy;
 
-	// condition
+	// ipc-condition
 	syscall[SYSCALL_COND_INIT]	= (long (*)())do_condition_init;
 	syscall[SYSCALL_COND_WAIT]	= (long (*)())do_condition_wait;
 	syscall[SYSCALL_COND_SIGNAL]	= (long (*)())do_condition_signal;
 	syscall[SYSCALL_COND_BROADCAST]	= (long (*)())do_condition_broadcast;
 	syscall[SYSCALL_COND_DESTROY]	= (long (*)())do_condition_destroy;
 
-	// mailbox
+	// ipc-mailbox
 	syscall[SYSCALL_MBOX_OPEN]	= (long (*)())do_mbox_open;
 	syscall[SYSCALL_MBOX_CLOSE]	= (long (*)())do_mbox_close;
 	syscall[SYSCALL_MBOX_SEND]	= (long (*)())do_mbox_send;
@@ -297,28 +297,24 @@ int main(void)
 
 		// Init Process Control Blocks |•'-'•) ✧
 		init_pcb();
-
 		init_tcb();
-
 		init_proc0(0);
-		
 		printk("> [INIT] PCB initialization succeeded.\n");
 
-
+		// Read cpu time base (⊙﹏⊙)
+		time_base = bios_read_fdt(TIMEBASE);
 
 		// Read Flatten Device Tree (｡•ᴗ-)_
-		time_base = bios_read_fdt(TIMEBASE);
 		e1000 = (volatile uint8_t *)bios_read_fdt(ETHERNET_ADDR);
 		uint64_t plic_addr = bios_read_fdt(PLIC_ADDR);
 		uint32_t nr_irqs = (uint32_t)bios_read_fdt(NR_IRQS);
 		printk("> [INIT] e1000: %lx, plic_addr: %lx, nr_irqs: %lx.\n", e1000, plic_addr, nr_irqs);
-
+		
 		// IOremap
 		plic_addr = (uintptr_t)ioremap((uint64_t)plic_addr, 0x4000 * NORMAL_PAGE_SIZE);
 		e1000 = (uint8_t *)ioremap((uint64_t)e1000, 8 * NORMAL_PAGE_SIZE);
 		printk("> [INIT] IOremap initialization succeeded.\n");
-
-
+		printl("e1000: %lx, plic_addr: %lx\n", e1000, plic_addr);
 
 		// Init lock mechanism o(´^｀)o
 		init_ipc();

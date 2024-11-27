@@ -33,8 +33,8 @@ MINICOM         = minicom
 # Build/Debug Flags and Variables
 # -----------------------------------------------------------------------
 
-# CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3 -mabi=lp64
-CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany
+CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3 -mabi=lp64
+# CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany
 
 BOOT_INCLUDE    = -I$(DIR_ARCH)/include
 BOOT_CFLAGS     = $(CFLAGS) $(BOOT_INCLUDE) -Wl,--defsym=TEXT_START=$(BOOTLOADER_ENTRYPOINT) -T riscv.lds
@@ -162,14 +162,18 @@ debug-smp:
 
 cursor:
 	echo -e "\033[?25h" && clear
-	
+
 debug-net:
 	-@sudo kill `sudo lsof | grep tun | awk '{print $$2}'`
 	sudo $(QEMU) $(QEMU_OPTS) $(QEMU_DEBUG_OPT) $(QEMU_NET_OPT) $(QEMU_SMP_OPT)
 
 viewlog:
-	@if [ ! -e $(QEMU_LOG_FILE) ]; then touch $(QEMU_LOG_FILE); fi;
-	@tail -f $(QEMU_LOG_FILE)
+	vim $(QEMU_LOG_FILE)
+#	@if [ ! -e $(QEMU_LOG_FILE) ]; then touch $(QEMU_LOG_FILE); fi;
+#	@tail -f $(QEMU_LOG_FILE)
+
+tcpdump:
+	sudo tcpdump -i tap0 -XX -vvv -nn
 
 minicom:
 	sudo $(MINICOM) -D $(TTYUSB1) -X ./fpga.log

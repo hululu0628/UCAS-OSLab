@@ -284,7 +284,7 @@ int uvmcopy(tcb_t * dest_tcb, tcb_t * src_tcb)
 	for(i = 0; i < src_tcb->us_size; i += PAGE_SIZE)
 	{
 		kaddr = alloc_page_helper(USER_STACK_ADDR - i - PAGE_SIZE, dest_pgdir, 
-				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_DIRTY | _PAGE_USER);
+				_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY | _PAGE_USER);
 		memcpy((uint8_t *)kaddr, 
 			(const uint8_t *)get_kaddr(src_tcb->user_stack_base - i - PAGE_SIZE, src_pgdir, 3), PAGE_SIZE);
 

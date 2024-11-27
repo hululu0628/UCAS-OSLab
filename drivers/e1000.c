@@ -1,3 +1,5 @@
+#include <io.h>
+#include <os/mm.h>
 #include <e1000.h>
 #include <type.h>
 #include <os/string.h>
@@ -6,7 +8,8 @@
 #include <pgtable.h>
 
 // E1000 Registers Base Pointer
-volatile uint8_t *e1000;  // use virtual memory address
+// what you get in main.c is physical address, but need virtual address
+volatile uint8_t *e1000;  
 
 // E1000 Tx & Rx Descriptors
 static struct e1000_tx_desc tx_desc_array[TXDESCS] __attribute__((aligned(16)));
@@ -18,6 +21,17 @@ static char rx_pkt_buffer[RXDESCS][RX_PKT_SIZE];
 
 // Fixed Ethernet MAC Address of E1000
 static const uint8_t enetaddr[6] = {0x00, 0x0a, 0x35, 0x00, 0x1e, 0x53};
+
+
+static void init_desc_array(void)
+{
+	int i;
+	for(i = 0; i < TXDESCS; i++)
+	{
+		tx_desc_array[i].status = E1000_TXD_STAT_DD;
+	}
+}
+
 
 /**
  * e1000_reset - Reset Tx and Rx Units; mask and clear all interrupts.
@@ -54,13 +68,36 @@ static void e1000_reset(void)
  **/
 static void e1000_configure_tx(void)
 {
-    /* TODO: [p5-task1] Initialize tx descriptors */
-
-    /* TODO: [p5-task1] Set up the Tx descriptor base address and length */
-
+	/* TODO: [p5-task1] Initialize tx descriptors */
+	/* TODO: [p5-task1] Set up the Tx descriptor base address and length */
 	/* TODO: [p5-task1] Set up the HW Tx Head and Tail descriptor pointers */
+	/* TODO: [p5-task1] Program the Transmit Control Register */
 
-    /* TODO: [p5-task1] Program the Transmit Control Register */
+	// set up TDBAL & TDBAH, point to base addr of descriptor array 
+	e1000_write_reg(e1000, E1000_TDBAL, 
+		(uint32_t)(kva2pa((uint64_t)tx_desc_array) & 0xffffffff));
+	e1000_write_reg(e1000, E1000_TDBAH, 
+		(uint32_t)(kva2pa((uint64_t)tx_desc_array) >> 32lu));
+	// set up TDLEN, array length
+	e1000_write_reg(e1000, E1000_TDLEN, TXDESCS * sizeof(struct e1000_tx_desc));
+
+	// set up TDH & TDT, head & tail to the array
+	e1000_write_reg(e1000, E1000_TDH, 0);
+	e1000_write_reg(e1000, E1000_TDT, 0);
+
+	// set up TCTL. for details, see guidebook
+	// EN = 1; PSP = 1; CT = 10H, COLD = 40H (0b100_0000_0001_0000_1010)
+	uint32_t mask = 0x0004010a;
+	e1000_write_reg(e1000, E1000_TCTL, mask);
+
+	printl("TX reg:\n"
+		"TDBAL: %lx, TDBAH: %lx, TDLEN: %lx\n"
+		"TDH: %lx, TDT: %lx\n",
+		e1000_read_reg(e1000, E1000_TDBAL),
+		e1000_read_reg(e1000, E1000_TDBAH),
+		e1000_read_reg(e1000, E1000_TDLEN),
+		e1000_read_reg(e1000, E1000_TDH),
+		e1000_read_reg(e1000, E1000_TDT));
 }
 
 /**
@@ -86,14 +123,16 @@ static void e1000_configure_rx(void)
  **/
 void e1000_init(void)
 {
-    /* Reset E1000 Tx & Rx Units; mask & clear all interrupts */
-    e1000_reset();
+	/* Reset E1000 Tx & Rx Units; mask & clear all interrupts */
+	e1000_reset();
 
-    /* Configure E1000 Tx Unit */
-    e1000_configure_tx();
+	/* Configure E1000 Tx Unit */
+	e1000_configure_tx();
 
-    /* Configure E1000 Rx Unit */
-    e1000_configure_rx();
+	/* Configure E1000 Rx Unit */
+	e1000_configure_rx();
+
+	init_desc_array();
 }
 
 /**
@@ -102,11 +141,32 @@ void e1000_init(void)
  * @param length - Length of this packet
  * @return - Number of bytes that are transmitted successfully
  **/
-int e1000_transmit(void *txpacket, int length)
+int e1000_transmit(void *txpacket, int length, int EOP)
 {
-    /* TODO: [p5-task1] Transmit one packet from txpacket */
+	/* TODO: [p5-task1] Transmit one packet from txpacket */
+	uint32_t tail = e1000_read_reg(e1000, E1000_TDT);
+	uint32_t head = e1000_read_reg(e1000, E1000_TDH);
+	printl("TDH: %d, TDT: %d\n",head,tail);
+	if(!(tx_desc_array[tail].status & E1000_TXD_STAT_DD))
+		return 0;
+	
+	struct e1000_tx_desc t;
+	t.addr = kva2pa((uint64_t)&tx_pkt_buffer[tail]);
+	t.length = length;
+	t.cmd = E1000_TXD_CMD_RS;
+	if(EOP)
+		t.cmd |= E1000_TXD_CMD_EOP;
+	t.cso = 0; t.css = 0; t.special = 0; t.status = 0;
 
-    return 0;
+	tx_desc_array[tail] = t;
+
+	memcpy((uint8_t *)&tx_pkt_buffer[tail], txpacket, length);
+
+	e1000_write_reg(e1000, E1000_TDT, (tail+1) % TXDESCS);
+
+	local_flush_dcache();
+	
+	return length;
 }
 
 /**
