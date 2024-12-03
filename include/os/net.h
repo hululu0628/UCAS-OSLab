@@ -19,5 +19,7 @@ extern void net_handle_irq(void);
 extern int do_net_recv(void *rxbuffer, int pkt_num, int *pkt_lens);
 extern int do_net_send(void *txpacket, int length);
 
+extern void handle_e1000_txqe(void);
+extern void handle_e1000_rxdmt0(void);
 extern void check_send(void);
 #endif  // !__INCLUDE_NET_H__

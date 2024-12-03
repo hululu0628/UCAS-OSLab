@@ -1,4 +1,6 @@
+#include <plic.h>
 #include <os/pgfault.h>
+#include <os/net.h>
 #include <os/irq.h>
 #include <os/time.h>
 #include <os/proc.h>
@@ -36,8 +38,14 @@ void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
 
 void handle_irq_ext(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
-    // TODO: [p5-task4] external interrupt handler.
-    // Note: plic_claim and plic_complete will be helpful ...
+	// TODO: [p5-task4] external interrupt handler.
+	// Note: plic_claim and plic_complete will be helpful ...
+	uint32_t id = plic_claim();
+	if(id == PLIC_E1000_QEMU_IRQ)
+	{
+		net_handle_irq();
+	}
+	plic_complete(id);
 }
 
 void init_trap()

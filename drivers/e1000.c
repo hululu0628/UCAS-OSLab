@@ -1,3 +1,5 @@
+#include "os/list.h"
+#include "os/proc.h"
 #include <io.h>
 #include <os/mm.h>
 #include <e1000.h>
@@ -30,6 +32,17 @@ static void init_desc_array(void)
 	{
 		tx_desc_array[i].status = E1000_TXD_STAT_DD;
 	}
+	for(i = 0; i < RXDESCS; i++)
+	{
+		rx_desc_array[i].addr = kva2pa((uint64_t)&rx_pkt_buffer[i]);
+		rx_desc_array[i].status = 0;
+	}
+}
+
+static void e1000_irq_init(void)
+{
+	e1000_read_reg(e1000, E1000_ICR);
+	e1000_write_reg(e1000, E1000_IMS, E1000_IMS_RXDMT0 | E1000_IMS_TXQE);
 }
 
 
@@ -38,29 +51,29 @@ static void init_desc_array(void)
  **/
 static void e1000_reset(void)
 {
-	/* Turn off the ethernet interface */
-    e1000_write_reg(e1000, E1000_RCTL, 0);
-    e1000_write_reg(e1000, E1000_TCTL, 0);
+		/* Turn off the ethernet interface */
+	e1000_write_reg(e1000, E1000_RCTL, 0);
+	e1000_write_reg(e1000, E1000_TCTL, 0);
 
-	/* Clear the transmit ring */
-    e1000_write_reg(e1000, E1000_TDH, 0);
-    e1000_write_reg(e1000, E1000_TDT, 0);
+		/* Clear the transmit ring */
+	e1000_write_reg(e1000, E1000_TDH, 0);
+	e1000_write_reg(e1000, E1000_TDT, 0);
 
-	/* Clear the receive ring */
-    e1000_write_reg(e1000, E1000_RDH, 0);
-    e1000_write_reg(e1000, E1000_RDT, 0);
+		/* Clear the receive ring */
+	e1000_write_reg(e1000, E1000_RDH, 0);
+	e1000_write_reg(e1000, E1000_RDT, 0);
 
-	/**
-     * Delay to allow any outstanding PCI transactions to complete before
-	 * resetting the device
-	 */
-    latency(1);
+		/**
+	* Delay to allow any outstanding PCI transactions to complete before
+		* resetting the device
+		*/
+	latency(1);
 
-	/* Clear interrupt mask to stop board from generating interrupts */
-    e1000_write_reg(e1000, E1000_IMC, 0xffffffff);
+		/* Clear interrupt mask to stop board from generating interrupts */
+	e1000_write_reg(e1000, E1000_IMC, 0xffffffff);
 
-    /* Clear any pending interrupt events. */
-    while (0 != e1000_read_reg(e1000, E1000_ICR)) ;
+	/* Clear any pending interrupt events. */
+	while (0 != e1000_read_reg(e1000, E1000_ICR)) ;
 }
 
 /**
@@ -105,17 +118,28 @@ static void e1000_configure_tx(void)
  **/
 static void e1000_configure_rx(void)
 {
-    /* TODO: [p5-task2] Set e1000 MAC Address to RAR[0] */
-
-    /* TODO: [p5-task2] Initialize rx descriptors */
-
-    /* TODO: [p5-task2] Set up the Rx descriptor base address and length */
-
-    /* TODO: [p5-task2] Set up the HW Rx Head and Tail descriptor pointers */
-
-    /* TODO: [p5-task2] Program the Receive Control Register */
-
-    /* TODO: [p5-task4] Enable RXDMT0 Interrupt */
+	/* TODO: [p5-task2] Set e1000 MAC Address to RAR[0] */
+	// Recieve Address
+	// recieve boardcast data
+	e1000_write_reg_array(e1000, E1000_RA, 1, 
+		E1000_RAH_AV | enetaddr[5] << 8 | enetaddr[4]);
+	// fill MAC
+	e1000_write_reg_array(e1000, E1000_RA, 0, 
+		enetaddr[3] << 24 | enetaddr[2] << 16 | enetaddr[1] << 8 | enetaddr[0]);
+	/* TODO: [p5-task2] Initialize rx descriptors */
+	/* TODO: [p5-task2] Set up the Rx descriptor base address and length */
+	e1000_write_reg(e1000, E1000_RDBAL, 
+		(uint32_t)(kva2pa((uint64_t)rx_desc_array) & 0xffffffff));
+	e1000_write_reg(e1000, E1000_RDBAH, 
+		(uint32_t)(kva2pa((uint64_t)rx_desc_array) >> 32lu));
+	e1000_write_reg(e1000, E1000_RDLEN, RXDESCS * sizeof(struct e1000_rx_desc));
+	/* TODO: [p5-task2] Set up the HW Rx Head and Tail descriptor pointers */
+	e1000_write_reg(e1000, E1000_RDH, 0);
+	e1000_write_reg(e1000, E1000_RDT, RXDESCS - 1);
+	/* TODO: [p5-task2] Program the Receive Control Register */
+	uint32_t mask = 0x00008002;
+	e1000_write_reg(e1000, E1000_RCTL, mask);
+	/* TODO: [p5-task4] Enable RXDMT0 Interrupt */
 }
 
 /**
@@ -133,6 +157,8 @@ void e1000_init(void)
 	e1000_configure_rx();
 
 	init_desc_array();
+
+	e1000_irq_init();
 }
 
 /**
@@ -176,7 +202,19 @@ int e1000_transmit(void *txpacket, int length, int EOP)
  **/
 int e1000_poll(void *rxbuffer)
 {
-    /* TODO: [p5-task2] Receive one packet and put it into rxbuffer */
-
-    return 0;
+	/* TODO: [p5-task2] Receive one packet and put it into rxbuffer */
+	int ret_len = 0;
+	uint32_t tail;
+	while(1)
+	{
+		tail = e1000_read_reg(e1000, E1000_RDT);
+		while(!(rx_desc_array[(tail + 1) % RXDESCS].status & E1000_RXD_STAT_DD))
+			;
+		memcpy(rxbuffer, (uint8_t *)&rx_pkt_buffer[tail], rx_desc_array[tail].length);
+		ret_len += rx_desc_array[tail].length;
+		e1000_write_reg(e1000, E1000_RDT, (tail+1) % RXDESCS);
+		if(rx_desc_array[tail].status & E1000_RXD_STAT_EOP)
+			return ret_len;
+	}
+	return 0;
 }
