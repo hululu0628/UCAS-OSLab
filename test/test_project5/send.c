@@ -37,6 +37,7 @@ int main(void)
 	for(int j = 0; j < 20; j++)
 	{
 		for(int i = 0; i < 4; i++) {
+			addr[i][0] = (j << 2) + i;
 			sys_net_send(addr[i], len[i]);
 			sys_move_cursor(0, print_location);
 			printf("> %d [SEND] totally send package %d/%d !         \n", j, i + 1, 4);
