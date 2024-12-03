@@ -20,7 +20,7 @@ int do_net_send(void *txpacket, int length)
 	for(int i = 0; i < length; i += TX_PKT_SIZE)
 	{
 		while(e1000_transmit(txp + i, (length - i <= TX_PKT_SIZE)?(length - i):TX_PKT_SIZE,
-				 (length - i <= TX_PKT_SIZE)?0:1) == 0)
+				 (length - i <= TX_PKT_SIZE)?1:0) == 0)
 		{
 			do_block(&current_running->list, &send_block_queue);
 		}
@@ -35,9 +35,10 @@ int do_net_recv(void *rxbuffer, int pkt_num, int *pkt_lens)
 	// TODO: [p5-task3] Call do_block when there is no packet on the way
 	int i;
 	uint64_t ret_length = 0;
+	uint8_t * buffer = (uint8_t *)rxbuffer;
 	for(i = 0; i < pkt_num; i++)
 	{
-		pkt_lens[i] = e1000_poll(&rxbuffer[i]);
+		pkt_lens[i] = e1000_poll(buffer + ret_length);
 		ret_length += pkt_lens[i];
 	}
 	return ret_length;  // Bytes it has received

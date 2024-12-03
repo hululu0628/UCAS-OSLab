@@ -204,16 +204,19 @@ int e1000_poll(void *rxbuffer)
 {
 	/* TODO: [p5-task2] Receive one packet and put it into rxbuffer */
 	int ret_len = 0;
-	uint32_t tail;
+	uint8_t * buffer = (uint8_t *)rxbuffer;
+	uint32_t tail,tail_next;
 	while(1)
 	{
 		tail = e1000_read_reg(e1000, E1000_RDT);
-		while(!(rx_desc_array[(tail + 1) % RXDESCS].status & E1000_RXD_STAT_DD))
+		tail_next = (tail + 1) % RXDESCS;
+		while(!(rx_desc_array[tail_next].status & E1000_RXD_STAT_DD))
 			;
-		memcpy(rxbuffer, (uint8_t *)&rx_pkt_buffer[tail], rx_desc_array[tail].length);
-		ret_len += rx_desc_array[tail].length;
+		memcpy(buffer + ret_len, (uint8_t *)&rx_pkt_buffer[tail_next], rx_desc_array[tail_next].length);
+		ret_len += rx_desc_array[tail_next].length;
 		e1000_write_reg(e1000, E1000_RDT, (tail+1) % RXDESCS);
-		if(rx_desc_array[tail].status & E1000_RXD_STAT_EOP)
+		rx_desc_array[tail_next].status ^= E1000_RXD_STAT_DD;
+		if(rx_desc_array[tail_next].status & E1000_RXD_STAT_EOP)
 			return ret_len;
 	}
 	return 0;

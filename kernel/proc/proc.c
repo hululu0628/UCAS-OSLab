@@ -437,7 +437,13 @@ int do_wait(int * status)
 
 int do_waitpid(pid_t pid)
 {
+	/* TODO */
 	while(1);
+	while(pcb[pid - 1].task_id != NO_TASK)
+	{
+		do_block(&current_running->list, &wait_queue);
+	}
+	free_proc(&pcb[pid - 1]);
 	return 0;
 }
 

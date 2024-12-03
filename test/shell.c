@@ -119,9 +119,10 @@ int main(void)
 					{
 						// unfinished
 						int pid;
-						sys_fork();
-						sys_exec(args[0], cmd.argc, (char **)cmd.argv);
-						sys_waitpid(1);
+						if((pid = sys_fork()) == 0)
+							sys_exec(args[0], cmd.argc, (char **)cmd.argv);
+						else
+							sys_waitpid(pid);
 					}
 				}
 				break;
