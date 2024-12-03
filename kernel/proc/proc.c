@@ -45,7 +45,7 @@ void do_scheduler(void)
 
 	/************************************************************/
 	// TODO: [p5-task3] Check send/recv queue to unblock PCBs
-	check_send();
+	// check_send_recv();
 	/************************************************************/
 
 	// TODO: [p2-task1] Modify the current_running pointer.

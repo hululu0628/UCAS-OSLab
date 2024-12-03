@@ -1,5 +1,5 @@
-#include "os/list.h"
-#include "os/proc.h"
+#include <os/list.h>
+#include <os/proc.h>
 #include <io.h>
 #include <os/mm.h>
 #include <e1000.h>
@@ -8,6 +8,7 @@
 #include <os/time.h>
 #include <assert.h>
 #include <pgtable.h>
+#include <mode.h>
 
 // E1000 Registers Base Pointer
 // what you get in main.c is physical address, but need virtual address
@@ -41,7 +42,6 @@ static void init_desc_array(void)
 
 static void e1000_irq_init(void)
 {
-	e1000_read_reg(e1000, E1000_ICR);
 	e1000_write_reg(e1000, E1000_IMS, E1000_IMS_RXDMT0 | E1000_IMS_TXQE);
 }
 
@@ -101,7 +101,9 @@ static void e1000_configure_tx(void)
 	// set up TCTL. for details, see guidebook
 	// EN = 1; PSP = 1; CT = 10H, COLD = 40H (0b100_0000_0001_0000_1010)
 	uint32_t mask = 0x0004010a;
+	#ifndef TXQE_TEST
 	e1000_write_reg(e1000, E1000_TCTL, mask);
+	#endif
 
 	printl("TX reg:\n"
 		"TDBAL: %lx, TDBAH: %lx, TDLEN: %lx\n"
@@ -167,30 +169,50 @@ void e1000_init(void)
  * @param length - Length of this packet
  * @return - Number of bytes that are transmitted successfully
  **/
-int e1000_transmit(void *txpacket, int length, int EOP)
+int e1000_transmit(void *txpacket, int length)
 {
 	/* TODO: [p5-task1] Transmit one packet from txpacket */
-	uint32_t tail = e1000_read_reg(e1000, E1000_TDT);
-	uint32_t head = e1000_read_reg(e1000, E1000_TDH);
-	printl("TDH: %d, TDT: %d\n",head,tail);
-	if(!(tx_desc_array[tail].status & E1000_TXD_STAT_DD))
-		return 0;
-	
+	static int len = 0;
+	uint32_t tail, tail_next;
 	struct e1000_tx_desc t;
-	t.addr = kva2pa((uint64_t)&tx_pkt_buffer[tail]);
-	t.length = length;
-	t.cmd = E1000_TXD_CMD_RS;
-	if(EOP)
-		t.cmd |= E1000_TXD_CMD_EOP;
-	t.cso = 0; t.css = 0; t.special = 0; t.status = 0;
 
-	tx_desc_array[tail] = t;
+	int eop_flag = 0;
 
-	memcpy((uint8_t *)&tx_pkt_buffer[tail], txpacket, length);
+	len = (len == 0) ? length : len;
 
-	e1000_write_reg(e1000, E1000_TDT, (tail+1) % TXDESCS);
+	while(1)
+	{
+		tail = e1000_read_reg(e1000, E1000_TDT);
+		tail_next = (tail + 1) % TXDESCS;
+		eop_flag = (len <= TX_PKT_SIZE);
 
-	local_flush_dcache();
+		if(!(tx_desc_array[tail_next].status & E1000_TXD_STAT_DD))
+			return 0;
+
+		t.addr = kva2pa((uint64_t)&tx_pkt_buffer[tail]);
+		t.length = length;
+		t.cmd = E1000_TXD_CMD_RS;
+		t.cso = 0; t.css = 0; t.special = 0; t.status = 0;
+		if(eop_flag)
+			t.cmd |= E1000_TXD_CMD_EOP;
+
+		tx_desc_array[tail] = t;
+
+		memcpy((uint8_t *)&tx_pkt_buffer[tail], txpacket + length - len, 
+							eop_flag ? len : TX_PKT_SIZE);
+
+		e1000_write_reg(e1000, E1000_TDT, (tail+1) % TXDESCS);
+
+		local_flush_dcache();
+
+		if(eop_flag)
+		{
+			len = 0;
+			break;
+		}
+
+		len -= TX_PKT_SIZE;
+	}
 	
 	return length;
 }
@@ -203,6 +225,7 @@ int e1000_transmit(void *txpacket, int length, int EOP)
 int e1000_poll(void *rxbuffer)
 {
 	/* TODO: [p5-task2] Receive one packet and put it into rxbuffer */
+	static int len = 0;
 	int ret_len = 0;
 	uint8_t * buffer = (uint8_t *)rxbuffer;
 	uint32_t tail,tail_next;
@@ -210,14 +233,25 @@ int e1000_poll(void *rxbuffer)
 	{
 		tail = e1000_read_reg(e1000, E1000_RDT);
 		tail_next = (tail + 1) % RXDESCS;
-		while(!(rx_desc_array[tail_next].status & E1000_RXD_STAT_DD))
-			;
-		memcpy(buffer + ret_len, (uint8_t *)&rx_pkt_buffer[tail_next], rx_desc_array[tail_next].length);
-		ret_len += rx_desc_array[tail_next].length;
-		e1000_write_reg(e1000, E1000_RDT, (tail+1) % RXDESCS);
+
+		if(!(rx_desc_array[tail_next].status & E1000_RXD_STAT_DD))
+			return 0;
+
+		memcpy(buffer + len, (uint8_t *)&rx_pkt_buffer[tail_next], rx_desc_array[tail_next].length);
+		len += rx_desc_array[tail_next].length;
+
 		rx_desc_array[tail_next].status ^= E1000_RXD_STAT_DD;
+
+		e1000_write_reg(e1000, E1000_RDT, (tail+1) % RXDESCS);
+		
+		local_flush_dcache();
+
 		if(rx_desc_array[tail_next].status & E1000_RXD_STAT_EOP)
+		{
+			ret_len = len;
+			len = 0;
 			return ret_len;
+		}
 	}
 	return 0;
 }

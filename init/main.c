@@ -2,6 +2,7 @@
 #include <common.h>
 #include <screen.h>
 #include <os/net.h>
+#include <plic.h>
 #include <os/ioremap.h>
 #include <e1000.h>
 #include <printk.h>
@@ -25,8 +26,8 @@
 #include <os/mm.h>
 #include <os/swap.h>
 #include <os/pthread.h>
+#include <mode.h>
 
-// #define M_CORE
 
 
 // Task info array
@@ -327,6 +328,10 @@ int main(void)
 		// Init network device ( 0_o)
 		e1000_init();
 		printk("> [INIT] E1000 device initialized successfully.\n");
+
+		plic_init(plic_addr, nr_irqs);
+		printk("> [INIT] PLIC device initialized successfully.\n");
+
 
 		// Init system call table (0_0)
 		init_syscall();

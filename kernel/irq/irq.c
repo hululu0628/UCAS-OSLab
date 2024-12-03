@@ -68,6 +68,7 @@ void init_trap()
 	for(i = 0; i < IRQC_COUNT; i++)
 		irq_table[i] = (handler_t)handle_other;
 	irq_table[IRQC_S_TIMER] = (handler_t)handle_irq_timer;
+	irq_table[IRQC_S_EXT] = (handler_t)handle_irq_ext;
 
 	/* TODO: [p2-task3] set up the entrypoint of exceptions */
 	setup_trap();

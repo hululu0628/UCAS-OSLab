@@ -21,5 +21,5 @@ extern int do_net_send(void *txpacket, int length);
 
 extern void handle_e1000_txqe(void);
 extern void handle_e1000_rxdmt0(void);
-extern void check_send(void);
+extern void check_send_recv(void);
 #endif  // !__INCLUDE_NET_H__
