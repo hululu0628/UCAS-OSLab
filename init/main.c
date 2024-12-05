@@ -305,6 +305,7 @@ int main(void)
 		// Read cpu time base (⊙﹏⊙)
 		time_base = bios_read_fdt(TIMEBASE);
 
+		#ifdef NET_DEVICE
 		// Read Flatten Device Tree (｡•ᴗ-)_
 		e1000 = (volatile uint8_t *)bios_read_fdt(ETHERNET_ADDR);
 		uint64_t plic_addr = bios_read_fdt(PLIC_ADDR);
@@ -317,6 +318,14 @@ int main(void)
 		printk("> [INIT] IOremap initialization succeeded.\n");
 		printl("e1000: %lx, plic_addr: %lx\n", e1000, plic_addr);
 
+		// Init network device ( 0_o)
+		e1000_init();
+		printk("> [INIT] E1000 device initialized successfully.\n");
+
+		plic_init(plic_addr, nr_irqs);
+		printk("> [INIT] PLIC device initialized successfully.\n");
+		#endif
+
 		// Init lock mechanism o(´^｀)o
 		init_ipc();
 		printk("> [INIT] Lock mechanism initialization succeeded.\n");
@@ -324,14 +333,6 @@ int main(void)
 		// Init interrupt (^_^)
 		init_trap();
 		printk("> [INIT] Interrupt processing initialization succeeded.\n");
-
-		// Init network device ( 0_o)
-		e1000_init();
-		printk("> [INIT] E1000 device initialized successfully.\n");
-
-		plic_init(plic_addr, nr_irqs);
-		printk("> [INIT] PLIC device initialized successfully.\n");
-
 
 		// Init system call table (0_0)
 		init_syscall();

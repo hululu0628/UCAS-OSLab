@@ -5,4 +5,6 @@
 
 // #define TXQE_TEST
 
+#define NET_DEVICE
+
 #endif

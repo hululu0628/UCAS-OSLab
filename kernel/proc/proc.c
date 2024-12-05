@@ -351,6 +351,8 @@ void do_exec(char *name, int argc, char **argv)
 		local_flush_tlb_all();
 		local_flush_icache_all();
 	}
+	else
+		assert(0);
 }
 
 /*
