@@ -41,10 +41,17 @@ void handle_irq_ext(regs_context_t *regs, uint64_t stval, uint64_t scause)
 	// TODO: [p5-task4] external interrupt handler.
 	// Note: plic_claim and plic_complete will be helpful ...
 	uint32_t id = plic_claim();
+	#ifdef QEMU_TEST
 	if(id == PLIC_E1000_QEMU_IRQ)
 	{
 		net_handle_irq();
 	}
+	#else
+	if(id == PLIC_E1000_PYNQ_IRQ)
+	{
+		net_handle_irq();
+	}
+	#endif
 	plic_complete(id);
 }
 
