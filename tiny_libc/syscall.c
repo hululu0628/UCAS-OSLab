@@ -43,13 +43,13 @@ void sys_move_cursor(int x, int y)
         invoke_syscall(SYSCALL_CURSOR, (long)x, (long)y, 0, 0, 0);
 }
 
-void sys_write(char *buff)
+void sys_screen_write(char *buff)
 {
-	/* TODO: [p2-task1] call call_jmptab to implement sys_write */
+	/* TODO: [p2-task1] call call_jmptab to implement sys_screen_write */
 	// the function we need is screen_write
 	// call_jmptab(WRITE,(long)buff,0,0,0,0);
-	/* TODO: [p2-task3] call invoke_syscall to implement sys_write */
-	invoke_syscall(SYSCALL_WRITE, (long)buff, 0, 0, 0, 0);
+	/* TODO: [p2-task3] call invoke_syscall to implement sys_screen_write */
+	invoke_syscall(SYSCALL_SCREEN_WRITE, (long)buff, 0, 0, 0, 0);
 }
 
 void sys_reflush(void)

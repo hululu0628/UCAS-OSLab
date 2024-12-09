@@ -200,7 +200,7 @@ static void init_syscall(void)
 
 	// screen
 	syscall[SYSCALL_PUTCHAR]	= (long (*)())screen_putchar;
-	syscall[SYSCALL_WRITE] 		= (long (*)())screen_write;
+	syscall[SYSCALL_SCREEN_WRITE] 		= (long (*)())screen_write;
 	syscall[SYSCALL_CURSOR] 	= (long (*)())screen_move_cursor;
 	syscall[SYSCALL_REFLUSH] 	= (long (*)())screen_reflush;
 	syscall[SYSCALL_CLEAR]		= (long (*)())screen_clear;

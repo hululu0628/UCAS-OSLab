@@ -413,7 +413,7 @@ int do_kill(pid_t pid)
 		}
 
 		reparent(&pcb[0], &pcb[pid - 1]);
-		wakeup(pcb[pid - 1].parent);
+		freeWaitQueue();
 	}
 	return 0;
 }
@@ -439,23 +439,19 @@ int do_wait(int * status)
 
 int do_waitpid(pid_t pid)
 {
-	/* TODO */
-	while(1);
 	while(pcb[pid - 1].task_id != NO_TASK)
 	{
 		do_block(&current_running->list, &wait_queue);
 	}
-	free_proc(&pcb[pid - 1]);
+	// free_proc(&pcb[pid - 1]);
 	return 0;
 }
 
-void wakeup(pcb_t *pcb)
+void freeWaitQueue()
 {
-	int pid = pcb->pid;
-	for(int i = 0; i < NUM_MAX_THREAD; i++)
+	while(wait_queue.next != &wait_queue)
 	{
-		if(tcb[i].pid == pid && tcb[i].status == TASK_BLOCKED)
-			do_unblock(&tcb[i].list);
+		do_unblock(wait_queue.next);
 	}
 }
 

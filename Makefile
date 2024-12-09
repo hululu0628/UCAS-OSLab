@@ -11,6 +11,7 @@ PROJECT_IDX	= 5
 SHELL       = /bin/sh
 DISK        = /dev/sdb
 TTYUSB1     = /dev/ttyUSB1
+TTYUSB3	    = /dev/ttyUSB3
 DIR_OSLAB   = $(HOME)/OSLab-RISC-V
 DIR_QEMU    = $(DIR_OSLAB)/qemu
 DIR_UBOOT   = $(DIR_OSLAB)/u-boot
@@ -191,6 +192,9 @@ tcpdump:
 
 minicom:
 	sudo $(MINICOM) -D $(TTYUSB1) -X ./fpga.log
+
+minicom2:
+	sudo $(MINICOM) -D $(TTYUSB3) -X ./fpga2.log
 
 .PHONY: all dirs clean floppy asm gdb run debug viewlog minicom run-net debug-net
 

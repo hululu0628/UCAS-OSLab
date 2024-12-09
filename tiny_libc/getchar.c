@@ -23,7 +23,7 @@ int getchar(void)
 		}
 		else if(read_idx > buf_idx)
 		{
-			sys_write("\n\033[31mError:\033[0m read_index > buffer_index\n");
+			sys_screen_write("\n\033[31mError:\033[0m read_index > buffer_index\n");
 			return -1;
 		}
 	}
@@ -58,7 +58,7 @@ int getchar(void)
 			}
 			else
 			{
-				sys_write("\n\033[31mError:\033[0m Buffer Overflow!\n");
+				sys_screen_write("\n\033[31mError:\033[0m Buffer Overflow!\n");
 				buf_idx = 0;
 				read_idx = 0;
 				return -1;

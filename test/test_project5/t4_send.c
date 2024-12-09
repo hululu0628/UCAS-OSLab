@@ -59,8 +59,8 @@ int main(void)
 		{
 			sys_net_send(&send_buffer[j], sizeof(pkt));
 		}
-	}
+	}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 	printf("Finish\n");
-	while(1);
+	// while(1);
 	return 0;
 }

@@ -12,7 +12,7 @@
 #define SYSCALL_TASKSET 	8	// for p3-task4
 #define SYSCALL_FORK		9
 #define SYSCALL_WAIT		10
-#define SYSCALL_WRITE 		20
+#define SYSCALL_SCREEN_WRITE 	20
 #define SYSCALL_READCH 		21
 #define SYSCALL_CURSOR 		22
 #define SYSCALL_REFLUSH 	23

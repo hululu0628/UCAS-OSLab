@@ -195,7 +195,7 @@ extern int do_taskset(int argc, char **argv);
 extern int alloc_proc(void);
 extern void free_proc(pcb_t * pcb);
 
-extern void wakeup(pcb_t * pcb);
+extern void freeWaitQueue(void);
 
 extern void reparent(pcb_t * parent, pcb_t * child);
 

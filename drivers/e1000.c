@@ -32,6 +32,7 @@ static void init_desc_array(void)
 	for(i = 0; i < TXDESCS; i++)
 	{
 		tx_desc_array[i].status = E1000_TXD_STAT_DD;
+		tx_desc_array[i].addr = kva2pa((uint64_t)&tx_pkt_buffer[i]);
 	}
 	for(i = 0; i < RXDESCS; i++)
 	{
