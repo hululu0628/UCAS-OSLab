@@ -6,7 +6,7 @@
 #define ETH_ALEN 6
 #define ETH_P_IP 0x0800u
 
-#define MAX_PL_LEN 1024
+#define MAX_PL_LEN 1400
 
 const uint8_t enetaddr[6] = {0x00, 0x0a, 0x35, 0x00, 0x1e, 0x53};
 

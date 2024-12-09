@@ -29,7 +29,7 @@ static inline uint16_t checksum(uint16_t *ptr, int nbytes, uint32_t sum)
 
 int main(void)
 {
-	int i, j;
+	int i, j, k;
 	srand(clock());
 
 	for(i = 0; i < BUFFER_SIZE; i++)
@@ -40,13 +40,17 @@ int main(void)
 			send_buffer[i].eth_hd.src[j] = enetaddr[j];
 		}
 		send_buffer[i].eth_hd.ether_type = ETH_P_IP;
-
-		for(j = 0; j < MAX_PL_LEN; j++)
-			send_buffer[j].data[j] = 0xff & rand();
-		send_buffer[j].data[0] = 0x42;		// Magic Number
-
+		for(j = 0; j < BUFFER_SIZE; j++)
+		{
+			for(k = 0; k < MAX_PL_LEN; k++)
+			{
+				srand(clock());
+				send_buffer[j].data[k] = 0xff & (uint8_t)rand();
+			}
+			send_buffer[j].data[0] = 0x42;		// Magic Number
+		}
 		send_buffer[i].checksum = checksum((uint16_t *)&send_buffer[i], sizeof(eth_t) + MAX_PL_LEN, 0);
-		printf("Buffer %d checksum: %d\n", i, send_buffer[i].checksum);
+		printf("Buffer %d checksum: 0x%x\n", i, send_buffer[i].checksum);
 	}
 	
 	for(i = 0; i < 300; i++)
@@ -56,4 +60,7 @@ int main(void)
 			sys_net_send(&send_buffer[j], sizeof(pkt));
 		}
 	}
+	printf("Finish\n");
+	while(1);
+	return 0;
 }

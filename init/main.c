@@ -367,6 +367,9 @@ int main(void)
 	}
 	else
 	{
+		#ifndef M_CORE
+		while(1);
+		#endif
 		smp_init();
 
 		cleanTempPgtab();

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define MAX_RECV_CNT 32
+#define MAX_RECV_CNT 1
 #define RX_PKT_SIZE 200
 
 static uint32_t recv_buffer[MAX_RECV_CNT * RX_PKT_SIZE];

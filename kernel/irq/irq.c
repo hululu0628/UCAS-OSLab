@@ -9,6 +9,7 @@
 #include <printk.h>
 #include <assert.h>
 #include <screen.h>
+#include <mode.h>
 
 handler_t irq_table[IRQC_COUNT];
 handler_t exc_table[EXCC_COUNT];
