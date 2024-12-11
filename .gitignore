@@ -5,3 +5,4 @@ build
 .gdbinit
 fpga.log
 pktRxTx
+*.DS_Store
