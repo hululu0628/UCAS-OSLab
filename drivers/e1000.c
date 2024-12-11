@@ -32,7 +32,7 @@ static void init_desc_array(void)
 	for(i = 0; i < TXDESCS; i++)
 	{
 		tx_desc_array[i].status = E1000_TXD_STAT_DD;
-		tx_desc_array[i].addr = kva2pa((uint64_t)&tx_pkt_buffer[i]);
+		// tx_desc_array[i].addr = kva2pa((uint64_t)&tx_pkt_buffer[i]);
 	}
 	for(i = 0; i < RXDESCS; i++)
 	{
@@ -190,14 +190,15 @@ int e1000_transmit(void *txpacket, int length)
 		if(!(tx_desc_array[tail_next].status & E1000_TXD_STAT_DD))
 			return 0;
 
-		t.addr = kva2pa((uint64_t)&tx_pkt_buffer[tail]);
-		t.length = length;
-		t.cmd = E1000_TXD_CMD_RS;
-		t.cso = 0; t.css = 0; t.special = 0; t.status = 0;
+		tx_desc_array[tail].addr = kva2pa((uint64_t)&tx_pkt_buffer[tail]);
+		tx_desc_array[tail].length = length;
+		tx_desc_array[tail].cmd = E1000_TXD_CMD_RS;
+		tx_desc_array[tail].cso = 0; 
+		tx_desc_array[tail].css = 0; 
+		tx_desc_array[tail].special = 0; 
+		tx_desc_array[tail].status = 0;
 		if(eop_flag)
-			t.cmd |= E1000_TXD_CMD_EOP;
-
-		tx_desc_array[tail] = t;
+			tx_desc_array[tail].cmd |= E1000_TXD_CMD_EOP;
 
 		memcpy((uint8_t *)&tx_pkt_buffer[tail], txpacket + length - len, 
 							eop_flag ? len : TX_PKT_SIZE);

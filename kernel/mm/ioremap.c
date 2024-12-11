@@ -7,39 +7,25 @@
 // maybe you can map it to IO_ADDR_START ?
 static uintptr_t io_base = IO_ADDR_START;
 
-static uintptr_t io_offset;
-
 // only used when initializing kernel
+// 1GB size page
 void *ioremap(unsigned long phys_addr, unsigned long size)
 {
 	// TODO: [p5-task1] map one specific physical region to virtual address
-	int isfirst = 1;
-	uint64_t ret_addr;
+	uint64_t va = io_base + phys_addr;
+	uint64_t vpn2 = (va & VA_MASK) >> (NORMAL_PAGE_SHIFT + PPN_BITS + PPN_BITS);
+	if(get_attribute(((PTE *)pa2kva(PGDIR_PA))[vpn2], _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE))
+		return (void *)va;
 
-	uint64_t offset;
-	uint64_t kaddr;
-	PTE * pte;
-	for(offset = 0; offset < size; offset += PAGE_SIZE, io_offset += PAGE_SIZE)
-	{
-		kaddr = alloc_page_helper(io_base+io_offset, (PTE *)pa2kva(PGDIR_PA), 
-			_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY);
-		pte = (PTE *)get_kaddr(io_base + io_offset, (PTE *)pa2kva(PGDIR_PA), 2);
-		if(kaddr != 0)
-		{
-			freePage(kaddr);
-			set_pfn(pte, (phys_addr + offset) >> NORMAL_PAGE_SHIFT);
-		}
-		else
-			assert(0);
+	// when size > 1GB, assert
+	if(size >> 30)
+		assert(0);
 
-		if(isfirst)
-		{
-			isfirst = 0;
-			ret_addr = io_base + io_offset;
-		}
-	}
+	set_pfn((PTE *)pa2kva(PGDIR_PA) + vpn2, ((phys_addr & 0xc0000000) >> NORMAL_PAGE_SHIFT));
+	set_attribute((PTE *)pa2kva(PGDIR_PA) + vpn2, 
+		_PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED | _PAGE_DIRTY);
 	local_flush_tlb_all();
-	return (void *)ret_addr;
+	return (void *)va;
 }
 
 void iounmap(void *io_addr)
