@@ -1,4 +1,4 @@
-#include "os/fs.h"
+#include <os/fs.h>
 #include <os/smp.h>
 #include <os/string.h>
 #include <os/loader.h>
@@ -237,6 +237,9 @@ pid_t do_fork(void)
 	tcb[i].trapframe.regs[TP] = (reg_t)&tcb[i];
 
 	pcb[pid - 1].parent = &pcb[current_running->pid - 1];
+
+	strcpy(pcb[pid - 1].path, pcb[current_running->pid - 1].path);
+	pcb[pid - 1].proc_dir_inode = pcb[current_running->pid - 1].proc_dir_inode;
 
 	tcb[i].status = TASK_READY;
 	addToQueue(&tcb[i].list,&ready_queue);

@@ -134,6 +134,9 @@ static inline void load_init()
 		pcb[0].dt_size = page_number * PAGE_SIZE;
 		pcb[0].tcb_num = 1;
 
+		strcpy(pcb[0].path, "/");
+		pcb[0].proc_dir_inode = root_inode_idx;
+
 		tcb[0].pid = 1;
 		tcb[0].tid = 1;
 		tcb[0].dt_size = page_number * PAGE_SIZE;
@@ -263,6 +266,8 @@ static void init_syscall(void)
 	syscall[SYSCALL_FS_LN]		= (long (*)())do_ln;
 	syscall[SYSCALL_FS_RM]		= (long (*)())do_rm;
 	syscall[SYSCALL_FS_LSEEK]	= (long (*)())do_lseek;
+	syscall[SYSCALL_FS_GETCWD]	= (long (*)())do_getcwd;
+
 }
 
 /*
@@ -363,9 +368,9 @@ int main(void)
 		// Init data for page swaping ( * ^ *)o④
 		init_swap();
 
-		do_mkfs();
-
 		init_cache();
+
+		init_fs();
 
 		// load the first user task
 		load_init();

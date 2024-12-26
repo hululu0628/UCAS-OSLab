@@ -7,7 +7,7 @@
 
 #define CACHE_START_ADDR 0xffffffc051800000	// also in mm.h
 
-#define PAGE_LINE_SIZE	4
+#define PAGE_LINE_SIZE	1
 #define DENTRY_LINE_SIZE DENTRYS_ONE_PAGE
 #define IARRAY_LINE_SIZE INODE_ONE_PAGE
 

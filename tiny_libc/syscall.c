@@ -339,13 +339,13 @@ int sys_statfs(void)
 int sys_cd(char *path)
 {
     // TODO [P6-task1]: Implement sys_cd
-    return 0;  // sys_cd succeeds
+    return invoke_syscall(SYSCALL_FS_CD, (long)path, 0, 0, 0, 0);  // sys_cd succeeds
 }
 
 int sys_mkdir(char *path)
 {
     // TODO [P6-task1]: Implement sys_mkdir
-    return 0;  // sys_mkdir succeeds
+    return invoke_syscall(SYSCALL_FS_MKDIR, (long)path, 0, 0, 0, 0);  // sys_mkdir succeeds
 }
 
 int sys_rmdir(char *path)
@@ -358,7 +358,7 @@ int sys_ls(char *path, int option)
 {
     // TODO [P6-task1]: Implement sys_ls
     // Note: argument 'option' serves for 'ls -l' in A-core
-    return 0;  // sys_ls succeeds
+    return invoke_syscall(SYSCALL_FS_LS, (long)path, (long)option, 0, 0, 0);  // sys_ls succeeds
 }
 
 int sys_open(char *path, int mode)
@@ -401,5 +401,20 @@ int sys_lseek(int fd, int offset, int whence)
 {
     // TODO [P6-task2]: Implement sys_lseek
     return 0;  // the resulting offset location from the beginning of the file
+}
+
+int sys_touch(char *path)
+{
+	return 0;
+}
+
+int sys_cat(char *path)
+{
+	return 0;
+}
+
+int sys_getcwd(char *buff)
+{
+	return invoke_syscall(SYSCALL_FS_GETCWD, (long)buff, 0, 0, 0, 0);
 }
 /************************************************************/

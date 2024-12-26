@@ -4,7 +4,7 @@
 #include <type.h>
 #include <os/task.h>
 
-#define FS_SIZE 0x40000000	// 1GB
+#define FS_SIZE 0x2000000	// 32MB
 #define SECTOR_SIZE 512
 #define BLOCK_SIZE 4096
 #define BLOCK_SIZE_SHIFT 12
@@ -66,6 +66,8 @@ typedef struct dentry {
 	ftype_t type;
 }__attribute__((aligned(64))) dentry_t;
 
+
+
 typedef struct inode { 
 	// TODO [P6-task1]: Implement the data structure of inode
 	struct {
@@ -107,10 +109,11 @@ typedef struct proc_fd
 #define SEEK_END 2
 
 extern unsigned long superblock_id;
-extern unsigned inode_root;
 extern superblock_t superblock;
+extern inode_idx_t root_inode_idx;
 
 /* fs function declarations */
+extern void init_fs(void);
 extern int create_dir(uint64_t inode_idx, uint64_t pinode_idx);
 extern int read_block(block_idx_t idx, inode_idx_t inode_idx, uintptr_t block_buffer);
 extern int do_mkfs(void);
@@ -128,5 +131,6 @@ extern int do_rm(char *path);
 extern int do_lseek(int fd, int offset, int whence);
 extern int do_touch(char *path);
 extern int do_cat(char *path);
+extern int do_getcwd(char *buff);
 
 #endif

@@ -18,11 +18,11 @@ uint64_t write_back_freq = 30;
 void init_cache()
 {
 	int i;
-	for(i = 0; i< D_CACHE_NUM; i++)
+	for(i = 0; i < P_CACHE_NUM; i++)
 	{
 		p_cache[i].cache_idx = i;
-		p_cache[i].next = (i + 1) % P_CACHE_NUM;
-		p_cache[i].prev = (i + 1) % P_CACHE_NUM;
+		p_cache[i].next = -1;
+		p_cache[i].prev = -1;
 	}
 	p_lru = -1;
 	p_used = 0;
@@ -176,7 +176,7 @@ void write_page(block_idx_t idx, uint8_t *data)
 		p_cache[tail].next = curr;
 
 		// write dentry
-		memcpy(p_array, data, PAGE_SIZE);
+		memcpy(p_array, data, BLOCK_SIZE);
 
 		if(page_cache_policy == WRITE_BACK)
 			p_cache[curr].ct |= LINE_DIRTY;

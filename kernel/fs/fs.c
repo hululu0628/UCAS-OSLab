@@ -15,10 +15,13 @@ superblock_t superblock;
 
 unsigned long superblock_id;
 
+inode_idx_t root_inode_idx;
+
 void init_fs(void)
 {
 	printk("Initializing File System...\n");
 	superblock_id = swap_id_start + (SWAP_SPACE >> 6);
+	do_mkfs();
 }
 
 static int fill_block(int start, int length, uint8_t * buffer)
@@ -32,7 +35,7 @@ static int fill_block(int start, int length, uint8_t * buffer)
 	for(int i = 0; i < length; i++)
 	{
 		buffer[byte_idx] |= (1 << byte_offset);
-		byte_offset = (byte_offset + 1) % sizeof(uint8_t);
+		byte_offset = (byte_offset + 1) % 8;
 		byte_idx += (byte_offset == 0);
 	}
 	return 0;
@@ -49,7 +52,7 @@ static int clear_block(int start, int length, uint8_t * buffer)
 	for(int i = 0; i < length; i++)
 	{
 		buffer[byte_idx] &= ~((uint8_t)(1 << byte_offset));
-		byte_offset = (byte_offset + 1) % sizeof(uint8_t);
+		byte_offset = (byte_offset + 1) % 8;
 		byte_idx += (byte_offset == 0);
 	}
 	return 0;
@@ -68,10 +71,10 @@ static int check_block(int start, int length, uint8_t * buffer)
 	{
 		if(buffer[byte_idx] & (1 << byte_offset))
 			res = i + 1;
-		byte_offset = (byte_offset + 1) % sizeof(uint8_t);
+		byte_offset = (byte_offset + 1) % 8;
 		byte_idx += (byte_offset == 0);
 	}
-	return res;
+	return res;	// 返回值为
 }
 
 static int allocate_block(int num, uint64_t * bit_idx)
@@ -97,7 +100,7 @@ static int allocate_block(int num, uint64_t * bit_idx)
 		if(((total >> 3) >> BLOCK_SIZE_SHIFT) > superblock.bmap_size)
 			assert(0);
 	}
-	if(fill_block(bmap_ptr, num, block_buffer))
+	if(fill_block(bmap_ptr % BLOCK_SIZE, num, block_buffer))
 		assert(0);
 	bios_sd_write(kva2pa((uintptr_t)block_buffer), 8, 
 		superblock.start_sector + ((superblock.offset_bmap + (bmap_ptr_byte >> BLOCK_SIZE_SHIFT)) << 3));
@@ -128,7 +131,7 @@ static int allocate_inode(int num, uint64_t * bit_idx)
 		if(((total >> 3) >> BLOCK_SIZE_SHIFT) > superblock.imap_size)
 			assert(0);
 	}
-	if(fill_block(imap_ptr, num, block_buffer))
+	if(fill_block(imap_ptr % BLOCK_SIZE, num, block_buffer))
 		assert(0);
 	bios_sd_write(kva2pa((uintptr_t)block_buffer), 8, 
 		superblock.start_sector + ((superblock.offset_imap + (imap_ptr_byte >> BLOCK_SIZE_SHIFT)) << 3));
@@ -221,6 +224,12 @@ block_idx_t extend_file(inode_idx_t i_idx, uint8_t * block_buffer)
 	if(next_block < MAX_DIRECT_BLOCK)
 	{
 		allocate_block(1, (uint64_t *)&bidx);
+
+		inode.direct[next_block] = bidx;
+		get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+		((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
+		write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+		
 		return bidx;
 	}
 	else if(next_block < MAX_INDIRECT_BLOCK + MAX_DIRECT_BLOCK)
@@ -404,7 +413,7 @@ int delete_dentry(inode_idx_t inode_idx, char * name, ftype_t type)
 
 					inode.dentry_num--;
 					get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-					((inode_t *)block_buffer)[inode_idx & 0x1f] = inode;
+					((inode_t *)block_buffer)[inode_idx & 0x1f].dentry_num--;
 					write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 					return 0;
 				}
@@ -447,7 +456,7 @@ int create_dentry(inode_idx_t inode_idx, dentry_t * dentry)
 				write_page(block_idx, block_buffer);
 
 				get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-				((inode_t *)block_buffer)[inode_idx & 0x1f] = inode;
+				((inode_t *)block_buffer)[inode_idx & 0x1f].dentry_num++;
 				write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 					
 				return 0;
@@ -462,7 +471,7 @@ int create_dentry(inode_idx_t inode_idx, dentry_t * dentry)
 			break;
 	}
 
-	dentry_num++;
+	inode.dentry_num++;
 	if(dentry_num / DENTRYS_ONE_PAGE + 1 > block_num)
 	{
 		block_num = dentry_num / DENTRYS_ONE_PAGE + 1;
@@ -488,15 +497,14 @@ int create_dentry(inode_idx_t inode_idx, dentry_t * dentry)
 
 		dentry_array = (dentry_t *)block_buffer;
 
-		dentry_array[dentry_num & (DENTRYS_ONE_PAGE - 1)] = *dentry;
+		dentry_array[(inode.dentry_num - 1) & (DENTRYS_ONE_PAGE - 1)] = *dentry;
 
 		write_page(block_idx, block_buffer);
 	}
-
-	inode.dentry_num = dentry_num;
 	
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	((inode_t *)block_buffer)[inode_idx & 0x1f] = inode;
+	((inode_t *)block_buffer)[inode_idx & 0x1f].dentry_num = inode.dentry_num;
+	((inode_t *)block_buffer)[inode_idx & 0x1f].size = inode.size;
 	write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
 	return 0;
@@ -580,13 +588,9 @@ int do_mkfs(void)
 
 	bios_sd_write(kva2pa((uintptr_t)block_buffer), 1, superblock_id);
 
-
 	printk("[FS] Resetting block map, inode map and inode_array...\n");
 	// reset bmap, imap, inode_array
-	for(i = 0; i < SECTOR_SIZE; i++)
-	{
-		block_buffer[i] = 0;
-	}
+	bzero(block_buffer, BLOCK_SIZE);
 	for(i = 0; i < superblock.bmap_size; i++)
 	{
 		bios_sd_write(kva2pa((uintptr_t)block_buffer), 8, 
@@ -603,15 +607,17 @@ int do_mkfs(void)
 			superblock.start_sector + ((superblock.offset_iarray + i) << 3));
 	}
 
-	
 	// init bmap
 	printk("[FS] Initializing block map...\n");
-	allocate_block(superblock.offset_data, NULL);
+	uint64_t bidx;
+	allocate_block(superblock.offset_data, &bidx);
 
 	// create root dir
 	printk("[FS] Creating root directory...\n");
 	allocate_inode(1, &inode_idx);
 	create_dir(inode_idx, inode_idx);
+
+	root_inode_idx = inode_idx;
 
 	printk("[FS] Complete file system initialization\n");
 
@@ -770,9 +776,9 @@ int do_ls(char *path, int option)
 			if(dentry_array[j].valid)
 			{
 				// print information
-				cinode_idx = dentry_array[j].index;
-				get_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-				cinode = ((inode_t *)block_buffer)[cinode_idx & 0x1f];
+				//cinode_idx = dentry_array[j].index;
+				//get_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+				//cinode = ((inode_t *)block_buffer)[cinode_idx & 0x1f];
 
 				printk("%s ",dentry_array[j].name);
 
@@ -784,6 +790,7 @@ int do_ls(char *path, int option)
 		if(dentry_num == 0)
 			break;
 	}
+	printk("\n");
 	return 0;  // do_ls succeeds
 }
 
@@ -1218,5 +1225,11 @@ int do_cat(char *path)
 		printk("%s",print_buffer);
 	}
 
+	return 0;
+}
+
+int do_getcwd(char *buff)
+{
+	strcpy(buff, pcb[current_running->pid - 1].path);
 	return 0;
 }

@@ -240,5 +240,6 @@ image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 extend_image:
 # 设置swap空间4MB，测试用
 #	dd if=/dev/zero of=$(ELF_IMAGE) oflag=append conv=notrunc bs=4096KB count=1
+	dd if=/dev/zero of=$(ELF_IMAGE) oflag=append conv=notrunc bs=32MB count=2
 
 .PHONY: image

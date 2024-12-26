@@ -45,7 +45,10 @@ enum cmdtype
 	EXEC,
 	KILL,
 	CLEAR,
-	TASKSET
+	TASKSET,
+	MKDIR,
+	CD,
+	LS
 };
 
 typedef struct CMD
@@ -149,6 +152,28 @@ int main(void)
 					}
 				}
 				break;
+			case MKDIR:
+				if(cmd.argc != 1)
+					printf("ERROR\n");
+				else
+				{
+					sys_mkdir(cmd.argv[0]);
+				}
+				break;
+			case CD:
+				if(cmd.argc != 1)
+					printf("ERROR\n");
+				else
+				{
+					sys_cd(cmd.argv[0]);
+				}
+				break;
+			case LS:
+				if(cmd.argc == 0)
+					sys_ls(".", 0);
+				else if(cmd.argc == 1)
+					sys_ls(cmd.argv[0], 0);
+				break;
 			default: printf("Unknown command\n");break;
 			}
 		}
@@ -170,7 +195,9 @@ int main(void)
 
 void getcmdline()
 {
-	printf("> root@UCAS_OS: ");
+	char buff[256];
+	sys_getcwd(buff);
+	printf("> hululu@UCAS_OS:%s#",buff);
 	gets(cmdstr);
 }
 
@@ -195,6 +222,12 @@ void gettoken(void)
 		cmd.type = CLEAR;
 	else if(strcmp(token,"taskset") == 0)
 		cmd.type = TASKSET;
+	else if(strcmp(token,"mkdir") == 0)
+		cmd.type = MKDIR;
+	else if(strcmp(token,"cd") == 0)
+		cmd.type = CD;
+	else if(strcmp(token,"ls") == 0)
+		cmd.type = LS;
 	else
 		cmd.type = UNKNOWN;
 
@@ -213,6 +246,12 @@ void gettoken(void)
 			cmd.type = CLEAR;
 		else if(strcmp(token,"taskset") == 0)
 			cmd.type = TASKSET;
+		else if(strcmp(token,"mkdir") == 0)
+			cmd.type = MKDIR;
+		else if(strcmp(token,"cd") == 0)
+			cmd.type = CD;
+		else if(strcmp(token,"ls") == 0)
+			cmd.type = LS;
 		else
 			cmd.type = UNKNOWN;
 
