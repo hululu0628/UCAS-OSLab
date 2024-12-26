@@ -7,7 +7,8 @@
 #define SECTORS_FOR_A_PAGE 8
 
 // #define SWAP_SPACE	64000000lu
-#define SWAP_SPACE	4096000lu	// 4MB，for debugging
+// #define SWAP_SPACE	4096000lu	// 4MB，for debugging
+#define SWAP_SPACE 0			
 #define MAX_SLOT	(SWAP_SPACE >> 12lu)
 
 #define GET_SECTOR_ID(num) (num << 3)

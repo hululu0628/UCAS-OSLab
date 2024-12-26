@@ -1,3 +1,5 @@
+#include <os/fs.h>
+#include <os/fs_cache.h>
 #include <pgtable.h>
 #include <common.h>
 #include <screen.h>
@@ -245,6 +247,22 @@ static void init_syscall(void)
 	// net
 	syscall[SYSCALL_NET_SEND]	= (long (*)())do_net_send;
 	syscall[SYSCALL_NET_RECV]	= (long (*)())do_net_recv;
+
+	// file system
+	syscall[SYSCALL_FS_MKFS]	= (long (*)())do_mkfs;
+	syscall[SYSCALL_FS_STATFS]	= (long (*)())do_statfs;
+	syscall[SYSCALL_FS_CD]		= (long (*)())do_cd;
+	syscall[SYSCALL_FS_MKDIR]	= (long (*)())do_mkdir;
+	syscall[SYSCALL_FS_LS]		= (long (*)())do_ls;
+	syscall[SYSCALL_FS_TOUCH]	= (long (*)())do_touch;
+	syscall[SYSCALL_FS_CAT]		= (long (*)())do_cat;
+	syscall[SYSCALL_FS_OPEN]	= (long (*)())do_open;
+	syscall[SYSCALL_FS_READ]	= (long (*)())do_read;
+	syscall[SYSCALL_FS_WRITE]	= (long (*)())do_write;
+	syscall[SYSCALL_FS_CLOSE]	= (long (*)())do_close;
+	syscall[SYSCALL_FS_LN]		= (long (*)())do_ln;
+	syscall[SYSCALL_FS_RM]		= (long (*)())do_rm;
+	syscall[SYSCALL_FS_LSEEK]	= (long (*)())do_lseek;
 }
 
 /*
@@ -344,6 +362,10 @@ int main(void)
 
 		// Init data for page swaping ( * ^ *)o④
 		init_swap();
+
+		do_mkfs();
+
+		init_cache();
 
 		// load the first user task
 		load_init();

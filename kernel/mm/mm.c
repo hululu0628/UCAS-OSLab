@@ -35,7 +35,7 @@ void init_page()
 	}
 
 	// the first three pages were used in boot.c
-	for(i = PGTAB_START + KERNEL_PGDIR_NUM + 1; i < DYNAMIC_START; i++)
+	for(i = PGTAB_START + KERNEL_PGDIR_NUM + 1; i < CACHE_START; i++)
 	{
 		pages[i-1].next = &pages[i];
 	}
@@ -102,7 +102,7 @@ void freePage(ptr_t baseAddr)
 	pages[i].ref_cnt--;
 	if(pages[i].ref_cnt == 0)
 	{
-		if(i >= PGTAB_START && i <= DYNAMIC_START)
+		if(i >= PGTAB_START && i <= CACHE_START)
 		{
 			pages[i].next = free_list_pgtab;
 			pages[i].flags = 0;

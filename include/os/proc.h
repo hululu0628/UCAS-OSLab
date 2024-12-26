@@ -33,12 +33,15 @@
 #include <os/list.h>
 #include <os/smp.h>
 #include <os/lock.h>
+#include <os/fs.h>
 #include <pgtable.h>
 
 #define NUM_MAX_TASK 16
 
 #define NUM_MAX_PROC 16
 #define NUM_MAX_THREAD 16
+
+#define WORKING_PATH 64
 
 #define NO_TASK -1
 
@@ -144,6 +147,12 @@ typedef struct pcb
 	int mlock_table[LOCK_NUM];
 	int mbox_table[MBOX_NUM];
 
+	/* opend file */
+	proc_fd_t fd_array[NUM_PROC_FD];
+
+	/* dir path */
+	char path[WORKING_PATH];
+	uint64_t proc_dir_inode;
 } pcb_t;
 
 /* ready queue to run */

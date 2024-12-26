@@ -1,3 +1,4 @@
+#include "os/fs.h"
 #include <os/smp.h>
 #include <os/string.h>
 #include <os/loader.h>
@@ -400,6 +401,14 @@ int do_kill(pid_t pid)
 			}
 		}
 		freeQueueToReady(&pcb[pid - 1].wait_list);
+
+		for(int i = 0; i < NUM_PROC_FD; i++)
+		{
+			pcb[pid - 1].fd_array[i].fd_mode = 0;
+			pcb[pid - 1].fd_array[i].fdesc_idx = -1;
+			pcb[pid - 1].fd_array[i].pos = 0;
+		}
+
 		// 多把锁
 		for(int i = 0; i < LOCK_NUM; i++)
 		{
