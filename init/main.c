@@ -136,6 +136,12 @@ static inline void load_init()
 
 		strcpy(pcb[0].path, "/");
 		pcb[0].proc_dir_inode = root_inode_idx;
+		for(int i = 0; i < NUM_PROC_FD; i++)
+		{
+			pcb[0].fd_array[i].fd_mode = 0;
+			pcb[0].fd_array[i].fdesc_idx = -1;
+			pcb[0].fd_array[i].pos = 0;
+		}
 
 		tcb[0].pid = 1;
 		tcb[0].tid = 1;
@@ -256,6 +262,7 @@ static void init_syscall(void)
 	syscall[SYSCALL_FS_STATFS]	= (long (*)())do_statfs;
 	syscall[SYSCALL_FS_CD]		= (long (*)())do_cd;
 	syscall[SYSCALL_FS_MKDIR]	= (long (*)())do_mkdir;
+	syscall[SYSCALL_FS_RMDIR]	= (long (*)())do_rmdir;
 	syscall[SYSCALL_FS_LS]		= (long (*)())do_ls;
 	syscall[SYSCALL_FS_TOUCH]	= (long (*)())do_touch;
 	syscall[SYSCALL_FS_CAT]		= (long (*)())do_cat;

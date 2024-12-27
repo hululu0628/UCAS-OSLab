@@ -11,6 +11,9 @@
 static fdesc_t fdesc_array[NUM_FDESCS];
 
 static uint8_t block_buffer[BLOCK_SIZE];
+
+static uint8_t block_buffer2[BLOCK_SIZE + 1];
+
 superblock_t superblock;
 
 unsigned long superblock_id;
@@ -77,7 +80,7 @@ static int check_block(int start, int length, uint8_t * buffer)
 	return res;	// 返回值为
 }
 
-static int allocate_block(int num, uint64_t * bit_idx)
+static int allocate_block(int num, block_idx_t * bit_idx)
 {
 	static uint64_t bmap_ptr = 0;
 	static uint64_t bmap_ptr_byte = 0;
@@ -108,7 +111,7 @@ static int allocate_block(int num, uint64_t * bit_idx)
 	return 0;
 }
 
-static int allocate_inode(int num, uint64_t * bit_idx)
+static int allocate_inode(int num, inode_idx_t * bit_idx)
 {
 	static uint64_t imap_ptr = 0;
 	static uint64_t imap_ptr_byte = 0;
@@ -171,41 +174,60 @@ block_idx_t find_block(inode_t * inode, int idx, uint8_t * block_buffer)
 	/* TODO */
 	block_idx_t first_level,second_level,third_level;
 
-	if(idx > ((inode->size - 1) >> BLOCK_SIZE_SHIFT))
-		return -1;
-
 	if(idx < MAX_DIRECT_BLOCK)
+	{
 		return inode->direct[idx];
+	}
 	else if(idx < MAX_INDIRECT_BLOCK + MAX_DIRECT_BLOCK)
 	{
+		if(inode->indirect == -1)
+			return -1;
 		get_page(inode->indirect, block_buffer);
 		idx -= MAX_DIRECT_BLOCK;
 		return ((block_idx_t *)block_buffer)[idx];
 	}
 	else if(idx < MAX_DIRECT_BLOCK + MAX_INDIRECT_BLOCK + MAX_DOUBLE_INDIRECT_BLOCK)
 	{
+		if(inode->double_indirect == -1)
+			return -1;
+
 		get_page(inode->double_indirect, block_buffer);
 		idx -= (MAX_DIRECT_BLOCK + MAX_INDIRECT_BLOCK);
 		first_level = idx / MAX_INDIRECT_BLOCK;
 		second_level = idx % MAX_INDIRECT_BLOCK;
+
+		if(((block_idx_t *)block_buffer)[first_level] == -1)
+			return -1;
+		
 		get_page(((block_idx_t *)block_buffer)[first_level], block_buffer);
 		return ((block_idx_t *)block_buffer)[second_level];
 	}
 	else
 	{
+		if(inode->triple_indirect == -1)
+			return -1;
+
 		get_page(inode->triple_indirect, block_buffer);
 		idx -= (MAX_DIRECT_BLOCK + MAX_INDIRECT_BLOCK + MAX_DOUBLE_INDIRECT_BLOCK);
 		first_level = idx / MAX_DOUBLE_INDIRECT_BLOCK;
 		second_level = (idx % MAX_DOUBLE_INDIRECT_BLOCK) / MAX_INDIRECT_BLOCK;
 		third_level = idx % MAX_INDIRECT_BLOCK;
+
+		if(((block_idx_t *)block_buffer)[first_level] == -1)
+			return -1;
+
 		get_page(((block_idx_t *)block_buffer)[first_level], block_buffer);
+
+		if(((block_idx_t *)block_buffer)[second_level] == -1)
+			return -1;
+
 		get_page(((block_idx_t *)block_buffer)[second_level], block_buffer);
 		return ((block_idx_t *)block_buffer)[third_level];
 	}
 
 }
 
-block_idx_t extend_file(inode_idx_t i_idx, uint8_t * block_buffer)
+block_idx_t extend_file(inode_idx_t i_idx, block_idx_t b_idx, uint8_t * block_buffer)
 {
 	int first_level, second_level, third_level;
 	block_idx_t first_level_idx,second_level_idx;
@@ -216,14 +238,11 @@ block_idx_t extend_file(inode_idx_t i_idx, uint8_t * block_buffer)
 	get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 	inode = ((inode_t*)block_buffer)[i_idx & 0x1f];
 
-	if(inode.size != 0)
-		next_block = ((inode.size - 1) >> BLOCK_SIZE_SHIFT) + 1;
-	else
-		next_block = 0;
+	next_block = b_idx;
 
 	if(next_block < MAX_DIRECT_BLOCK)
 	{
-		allocate_block(1, (uint64_t *)&bidx);
+		allocate_block(1, &bidx);
 
 		inode.direct[next_block] = bidx;
 		get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
@@ -236,18 +255,23 @@ block_idx_t extend_file(inode_idx_t i_idx, uint8_t * block_buffer)
 	{
 		first_level = next_block - MAX_DIRECT_BLOCK;
 
-		if(first_level == 0)
+		if(inode.indirect == -1)
 		{
-			allocate_block(1, (uint64_t *)&bidx);
+			allocate_block(1, &bidx);
 			inode.indirect = bidx;
 			get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 			((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
 			write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+
+			get_page(inode.indirect, block_buffer);
+			memset(block_buffer, -1, BLOCK_SIZE);
+			write_page(inode.indirect, block_buffer);
 		}
+
+		allocate_block(1, &bidx);
 
 		get_page(inode.indirect, block_buffer);
 
-		allocate_block(1, (uint64_t *)&bidx);
 		((block_idx_t *)block_buffer)[first_level] = bidx;
 
 		write_page(inode.indirect, block_buffer);
@@ -260,29 +284,42 @@ block_idx_t extend_file(inode_idx_t i_idx, uint8_t * block_buffer)
 		first_level = next_block / MAX_INDIRECT_BLOCK;
 		second_level = next_block % MAX_INDIRECT_BLOCK;
 
-		if(second_level == 0)
+		if(inode.double_indirect == -1)
 		{
-			if(first_level == 0)
-			{
-				allocate_block(1, (uint64_t *)&bidx);
-				inode.double_indirect = bidx;
-				get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-				((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
-				write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-			}
+			allocate_block(1, &bidx);
+			inode.double_indirect = bidx;
+			get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+			((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
+			write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+
 			get_page(inode.double_indirect, block_buffer);
-			allocate_block(1, (uint64_t *)&bidx);
-			((block_idx_t *)block_buffer)[second_level] = bidx;
+			memset(block_buffer, -1, BLOCK_SIZE);
 			write_page(inode.double_indirect, block_buffer);
 		}
 
 
 		get_page(inode.double_indirect, block_buffer);
+
+		if(((block_idx_t *)block_buffer)[first_level] == -1)
+		{
+			allocate_block(1, &bidx);
+			get_page(inode.double_indirect, block_buffer);
+			((block_idx_t *)block_buffer)[first_level] = bidx;
+			write_page(inode.double_indirect, block_buffer);
+
+			get_page(bidx, block_buffer);
+			memset(block_buffer, -1, BLOCK_SIZE);
+			write_page(bidx, block_buffer);
+		}
+
+		get_page(inode.double_indirect, block_buffer);
 		
 		first_level_idx = ((block_idx_t *)block_buffer)[first_level];
+
+		allocate_block(1, &bidx);
+
 		get_page(first_level_idx, block_buffer);
 
-		allocate_block(1, (uint64_t *)&bidx);
 		((block_idx_t *)block_buffer)[second_level] = bidx;
 
 		write_page(first_level_idx, block_buffer);
@@ -296,44 +333,59 @@ block_idx_t extend_file(inode_idx_t i_idx, uint8_t * block_buffer)
 		second_level = (next_block % MAX_DOUBLE_INDIRECT_BLOCK) / MAX_INDIRECT_BLOCK;
 		third_level = next_block % MAX_INDIRECT_BLOCK;
 
-		if(third_level == 0)
+		if(inode.triple_indirect == -1)
 		{
-			if(second_level == 0)
-			{
-				if(first_level == 0)
-				{
-					allocate_block(1, (uint64_t *)&bidx);
-					inode.triple_indirect = bidx;
-					get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-					((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
-					write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-				}
-				get_page(inode.triple_indirect, block_buffer);
-				allocate_block(1, (uint64_t *)&bidx);
-				((block_idx_t *)block_buffer)[first_level] = bidx;
-				write_page(inode.triple_indirect, block_buffer);
-			}
+			allocate_block(1, &bidx);
+			inode.triple_indirect = bidx;
+			get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+			((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
+			write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
 			get_page(inode.triple_indirect, block_buffer);
-			first_level_idx = ((block_idx_t *)block_buffer)[first_level];
+			memset(block_buffer, -1, BLOCK_SIZE);
+			write_page(inode.triple_indirect, block_buffer);
+		}
 
-			get_page(first_level_idx, block_buffer);
+		get_page(inode.triple_indirect, block_buffer);
 
-			allocate_block(1, (uint64_t *)&bidx);
-			((block_idx_t *)block_buffer)[second_level] = bidx;
+		if(((block_idx_t *)block_buffer)[first_level] == -1)
+		{
+			allocate_block(1, &bidx);
+			get_page(inode.triple_indirect, block_buffer);
+			((block_idx_t *)block_buffer)[first_level] = bidx;
+			write_page(inode.triple_indirect, block_buffer);
 
-			write_page(first_level_idx, block_buffer);
+			get_page(bidx, block_buffer);
+			memset(block_buffer, -1, BLOCK_SIZE);
+			write_page(bidx, block_buffer);
 		}
 
 
 
 		get_page(inode.triple_indirect, block_buffer);
 		first_level_idx = ((block_idx_t *)block_buffer)[first_level];
+
+		get_page(first_level_idx, block_buffer);
+
+		if(((block_idx_t *)block_buffer)[second_level] == -1)
+		{
+			allocate_block(1, &bidx);
+			get_page(first_level_idx, block_buffer);
+			((block_idx_t *)block_buffer)[second_level] = bidx;
+			write_page(first_level_idx, block_buffer);
+
+			get_page(bidx, block_buffer);
+			memset(block_buffer, -1, BLOCK_SIZE);
+			write_page(bidx, block_buffer);
+		}
+
 		get_page(first_level_idx, block_buffer);
 		second_level_idx = ((block_idx_t *)block_buffer)[second_level];
-		get_page(second_level_idx, block_buffer);
 
-		allocate_block(1, (uint64_t *)&bidx);
+
+		allocate_block(1, &bidx);
+
+		get_page(second_level_idx, block_buffer);
 		((block_idx_t *)block_buffer)[third_level] = bidx;
 
 		write_page(second_level_idx, block_buffer);
@@ -405,6 +457,8 @@ int delete_dentry(inode_idx_t inode_idx, char * name, ftype_t type)
 			{
 				if(strcmp(name, dentry_array[j].name) == 0 && dentry_array[j].type == type)
 				{
+					dentry_array[j].valid = 0;
+					write_page(block_idx, block_buffer);
 					if(dentry_num == 1 && i == block_num - 1)
 					{
 						free_block(block_idx);
@@ -472,10 +526,10 @@ int create_dentry(inode_idx_t inode_idx, dentry_t * dentry)
 	}
 
 	inode.dentry_num++;
-	if(dentry_num / DENTRYS_ONE_PAGE + 1 > block_num)
+	if(inode.dentry_num / DENTRYS_ONE_PAGE + 1 > block_num)
 	{
 		block_num = dentry_num / DENTRYS_ONE_PAGE + 1;
-		block_idx = extend_file(inode_idx, block_buffer);
+		block_idx = extend_file(inode_idx, block_num - 1, block_buffer);
 
 		get_page(block_idx, block_buffer);
 
@@ -524,6 +578,11 @@ int create_dir(uint64_t inode_idx, uint64_t pinode_idx)
 	inode.mode.user = FILE_READ | FILE_WRITE | FILE_EXEC;
 	inode.mode.group = FILE_READ | FILE_WRITE | FILE_EXEC;
 	inode.mode.others = FILE_READ | FILE_WRITE | FILE_EXEC;
+	for(int i = 0; i < MAX_DIRECT_BLOCK; i++)
+		inode.direct[i] = -1;
+	inode.indirect = -1;
+	inode.double_indirect = -1;
+	inode.triple_indirect = -1;
 
 	((inode_t *)block_buffer)[inode_idx & 0x1f] = inode;
 
@@ -549,7 +608,7 @@ int do_mkfs(void)
 {
 	// TODO [P6-task1]: Implement do_mkfs
 	int i;
-	uint64_t inode_idx;
+	inode_idx_t inode_idx;
 
 	printk("[FS] Initializing the file system...\n");
 
@@ -557,6 +616,7 @@ int do_mkfs(void)
 	if(((superblock_t *)block_buffer)->magic_num == SUPERBLOCK_MAGIC)
 	{
 		printk("[FS] A file system already exists on this device\n");
+		superblock = *((superblock_t *)block_buffer);
 		return -1;
 	}
 	// init superblock
@@ -609,7 +669,7 @@ int do_mkfs(void)
 
 	// init bmap
 	printk("[FS] Initializing block map...\n");
-	uint64_t bidx;
+	block_idx_t bidx;
 	allocate_block(superblock.offset_data, &bidx);
 
 	// create root dir
@@ -639,8 +699,10 @@ int do_cd(char *path)
 	int i, j;
 	dentry_t dentry;
 	char buff[WORKING_PATH];
+	char buff2[WORKING_PATH];
 	inode_idx_t inode_idx;
 	inode_idx = pcb[current_running->pid - 1].proc_dir_inode;
+	strcpy(buff2, pcb[current_running->pid - 1].path);
 	i = 0;
 
 	while((j = strchr(path + i, '/')) != 0)
@@ -654,6 +716,29 @@ int do_cd(char *path)
 			return -1;
 		}
 
+
+		if(strcmp(buff, "..") == 0)
+		{
+			if(inode_idx != root_inode_idx)
+			{
+				for(int k = strlen(buff2) - 2; k >= 0; k--)
+				{
+					if(buff2[k] == '/')
+					{
+						buff2[k+1] = '\0';
+						break;
+					}
+				}
+			}
+		}
+		else if(strcmp(buff, ".") != 0)
+		{
+			strcat(buff2, buff);
+			int len = strlen(buff2);
+			buff2[len] = '/';
+			buff2[len + 1] = '\0';
+		}
+
 		inode_idx = dentry.inode;
 		
 		if((path+i)[j] != '\0')
@@ -663,20 +748,7 @@ int do_cd(char *path)
 	}
 
 	pcb[current_running->pid - 1].proc_dir_inode = inode_idx;
-	if(path[0] == '.' && path[1] != '\0')
-	{
-		strcat(pcb[current_running->pid - 1].path, path + 2);
-		if(path[i - 1] != '/')
-			strcat(pcb[current_running->pid - 1].path, "/");
-	}
-	else if(path[0] != '.')
-	{
-		strcat(pcb[current_running->pid - 1].path, path);
-		if(path[i - 1] != '/')
-			strcat(pcb[current_running->pid - 1].path, "/");
-	}
-	else
-		assert(0);
+	strcpy(pcb[current_running->pid - 1].path, buff2);
 	
 	return 0;  // do_cd succeeds
 }
@@ -696,7 +768,7 @@ int do_mkdir(char *path)
 		return -1;
 	}
 
-	allocate_inode(1, (uint64_t *)&cinode_idx);
+	allocate_inode(1, &cinode_idx);
 
 	strcpy(dentry.name, path);
 	dentry.type = TYPE_DIR;
@@ -759,7 +831,30 @@ int do_ls(char *path, int option)
 	inode_idx_t inode_idx = pcb[current_running->pid - 1].proc_dir_inode;
 	inode_idx_t cinode_idx;
 	inode_t inode,cinode;
+	dentry_t dentry;
 	dentry_t * dentry_array;
+	char buff[WORKING_PATH];
+
+	i = 0;
+	while((j = strchr(path + i, '/')) != 0)
+	{
+		strncpy(buff, path + i, j);
+		buff[j] = '\0';
+
+		if(get_dentry(inode_idx, buff, &dentry, TYPE_DIR) == -1)
+		{
+			printk("ERROR: can not find \"%s\"\n",buff);
+			return -1;
+		}
+
+		inode_idx = dentry.inode;
+		
+		if((path+i)[j] != '\0')
+			i += (j + 1);
+		else
+			i += j;
+	}
+
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
 
@@ -769,18 +864,51 @@ int do_ls(char *path, int option)
 	for(i = 0; i < block_num; i++)
 	{
 		bidx = find_block(&inode, i, block_buffer);
-		get_page(bidx, block_buffer);
-		dentry_array = (dentry_t *)block_buffer;
+		get_page(bidx, block_buffer2);
+		dentry_array = (dentry_t *)block_buffer2;
 		for(j = 0; j < DENTRYS_ONE_PAGE; j++)
 		{
 			if(dentry_array[j].valid)
 			{
 				// print information
-				//cinode_idx = dentry_array[j].index;
-				//get_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-				//cinode = ((inode_t *)block_buffer)[cinode_idx & 0x1f];
-
-				printk("%s ",dentry_array[j].name);
+				if(option == LONG_LIST)
+				{
+					cinode_idx = dentry_array[j].inode;
+					get_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+					cinode = ((inode_t *)block_buffer)[cinode_idx & 0x1f];
+					
+					strcpy(buff, "----------");
+					if(cinode.type == TYPE_DIR)
+						buff[0] = 'd';
+					if(cinode.mode.user & FILE_READ)
+						buff[1] = 'r';
+					if(cinode.mode.user & FILE_WRITE)
+						buff[2] = 'w';
+					if(cinode.mode.user & FILE_EXEC)
+						buff[3] = 'x';
+					if(cinode.mode.user & FILE_READ)
+						buff[4] = 'r';
+					if(cinode.mode.user & FILE_WRITE)
+						buff[5] = 'w';
+					if(cinode.mode.user & FILE_EXEC)
+						buff[6] = 'x';
+					if(cinode.mode.user & FILE_READ)
+						buff[7] = 'r';
+					if(cinode.mode.user & FILE_WRITE)
+						buff[8] = 'w';
+					if(cinode.mode.user & FILE_EXEC)
+						buff[9] = 'x';
+					printk("%s",buff);
+					if(cinode.type == TYPE_DIR)
+						printk("%3d", cinode.dentry_num);
+					else
+						printk("%3d", 1);
+					printk(" hululu hululu ");
+					printk("%5ld ", cinode.size);
+					printk("%s\n",dentry_array[j].name);
+				}
+				else if(option == NORMAL_LIST)
+					printk("%s ",dentry_array[j].name);
 
 				dentry_num--;
 			}
@@ -790,7 +918,8 @@ int do_ls(char *path, int option)
 		if(dentry_num == 0)
 			break;
 	}
-	printk("\n");
+	if(option == NORMAL_LIST)
+		printk("\n");
 	return 0;  // do_ls succeeds
 }
 
@@ -811,12 +940,18 @@ int do_open(char *path, int mode)
 		if((path+i)[j] != '\0')
 		{
 			if(get_dentry(inode_idx, buff, &dentry, TYPE_DIR) == -1)
+			{
+				printk("ERROR: path error\n");
 				return -1;
+			}
 		}
 		else
 		{
 			if(get_dentry(inode_idx, buff, &dentry, TYPE_FILE) == -1)
+			{
+				printk("ERROR: no such file\n");
 				return -1;
+			}
 		}
 
 		inode_idx = dentry.inode;
@@ -866,7 +1001,7 @@ int do_open(char *path, int mode)
 	{
 		fdesc_array[i].inode = inode_idx;
 		fdesc_array[i].proc_ref_cnt++;
-		pcb[current_running->pid-1].fd_array[j].fdesc_idx = j;
+		pcb[current_running->pid-1].fd_array[j].fdesc_idx = i;
 		pcb[current_running->pid-1].fd_array[j].fd_mode = mode;
 		pcb[current_running->pid-1].fd_array[j].pos = 0;
 	}
@@ -905,7 +1040,7 @@ int do_read(int fd, char *buff, int length)
 
 	res = pos + length;
 
-	for(int i = start_block; i < end_block; i++)
+	for(int i = start_block; i < end_block + 1; i++)
 	{
 		bidx = find_block(&inode, i, block_buffer);
 		get_page(bidx, block_buffer);
@@ -951,11 +1086,11 @@ int do_write(int fd, char *buff, int length)
 
 	new_size = pos + length;
 
-	for(int i = start_block; i < end_block; i++)
+	for(int i = start_block; i < end_block + 1; i++)
 	{
 		bidx = find_block(&inode, i, block_buffer);
 		if(bidx == -1)
-			bidx = extend_file(inode_idx, block_buffer);
+			bidx = extend_file(inode_idx, i, block_buffer);
 		
 		get_page(bidx, block_buffer);
 
@@ -965,14 +1100,14 @@ int do_write(int fd, char *buff, int length)
 		length -= write_len;
 
 		memcpy(block_buffer + write_start, (const uint8_t *)buff, write_len);
+		write_page(bidx, block_buffer);
 		buff += write_len;
 	}
 
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
 	if(new_size > inode.size)
 	{
-		inode.size = new_size;
+		((inode_t *)block_buffer)[inode_idx & 0x1f].size = new_size;
 		write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 	}
 	pcb[current_running->pid-1].fd_array[fd].pos = new_size;
@@ -997,12 +1132,12 @@ int do_close(int fd)
 	return 0;  // do_close succeeds
 }
 
+// Q: 可能有重名的普通文件和目录
 int do_ln(char *src_path, char *dst_path)
 {
 	// TODO [P6-task2]: Implement do_ln
-	/*
 	int i, j;
-	dentry_t dentry;
+	dentry_t sdentry, dentry;
 	char sbuff[WORKING_PATH];
 	char dbuff[WORKING_PATH];
 	inode_idx_t sinode_idx, dinode_idx;
@@ -1013,18 +1148,27 @@ int do_ln(char *src_path, char *dst_path)
 		strncpy(sbuff, src_path + i, j);
 		sbuff[j] = '\0';
 
-		if((src_path+i)[j] != '\0')
+		if(get_dentry(sinode_idx, sbuff, &sdentry, TYPE_DIR) == -1)
 		{
-			if(get_dentry(sinode_idx, sbuff, &dentry, TYPE_DIR) == -1)
+			if((dst_path+i)[j] != '\0')
+				i += (j + 1);
+			else
+				i += j;
+
+			if((j = strchr(src_path + i, '/')) != 0)
+			{
+				printk("ERROR: can not find \"%s\"\n",sbuff);
 				return -1;
-		}
-		else
-		{
-			if(get_dentry(sinode_idx, sbuff, &dentry, TYPE_FILE) == -1)
+			}
+
+			if(get_dentry(sinode_idx, sbuff, &sdentry, TYPE_FILE) == -1)
+			{
+				printk("ERROR: can not find \"%s\"\n",sbuff);
 				return -1;
+			}
 		}
 
-		sinode_idx = dentry.inode;
+		sinode_idx = sdentry.inode;
 		
 		if((src_path+i)[j] != '\0')
 			i += (j + 1);
@@ -1038,15 +1182,19 @@ int do_ln(char *src_path, char *dst_path)
 		strncpy(dbuff, dst_path + i, j);
 		dbuff[j] = '\0';
 
-		if((dst_path+i)[j] != '\0')
+		if(get_dentry(dinode_idx, dbuff, &dentry, TYPE_DIR) == -1)
 		{
-			if(get_dentry(dinode_idx, dbuff, &dentry, TYPE_DIR) == -1)
+			if((dst_path+i)[j] != '\0')
+				i += (j + 1);
+			else
+				i += j;
+
+			if((j = strchr(dst_path + i, '/')) != 0)
+			{
+				printk("ERROR: can not find \"%s\"\n",dbuff);
 				return -1;
-		}
-		else
-		{
-			if(get_dentry(dinode_idx, dbuff, &dentry, TYPE_FILE) == -1)
-				return -1;
+			}
+			break;
 		}
 
 		dinode_idx = dentry.inode;
@@ -1057,24 +1205,13 @@ int do_ln(char *src_path, char *dst_path)
 			i += j;
 	}
 
-
-	if(get_dentry(inode_idx, buff, &dentry, TYPE_DIR) != -1)
-	{
-		printk("ERROR: directory named \"%s\" already existed\n",path);
-		return -1;
-	}
-
-	allocate_inode(1, (uint64_t *)&cinode_idx);
-
-	strcpy(dentry.name, path);
-	dentry.type = TYPE_DIR;
+	strcpy(dentry.name, dbuff);
+	dentry.type = sdentry.type;
 	dentry.valid = 1;
-	dentry.inode = cinode_idx;
+	dentry.inode = sinode_idx;
 
-	create_dir(cinode_idx, inode_idx);
+	create_dentry(dinode_idx, &dentry);
 
-	create_dentry(inode_idx, &dentry);	// TODO
-	*/
 	return 0;  // do_ln succeeds 
 }
 
@@ -1170,7 +1307,7 @@ int do_touch(char *path)
 		return -1;
 	}
 
-	allocate_inode(1, (uint64_t *)&cinode_idx);
+	allocate_inode(1, &cinode_idx);
 
 	strcpy(dentry.name, path);
 	dentry.type = TYPE_FILE;
@@ -1186,8 +1323,13 @@ int do_touch(char *path)
 	inode.mode.user = FILE_READ | FILE_WRITE | FILE_EXEC;
 	inode.mode.group = FILE_READ | FILE_WRITE | FILE_EXEC;
 	inode.mode.others = FILE_READ | FILE_WRITE | FILE_EXEC;
+	for(int i = 0; i < MAX_DIRECT_BLOCK; i++)
+		inode.direct[i] = -1;
+	inode.indirect = -1;
+	inode.double_indirect = -1;
+	inode.triple_indirect = -1;
 
-	((inode_t *)block_buffer)[inode_idx & 0x1f] = inode;
+	((inode_t *)block_buffer)[cinode_idx & 0x1f] = inode;
 
 	write_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
@@ -1203,8 +1345,7 @@ int do_cat(char *path)
 	dentry_t dentry;
 	int block_num;
 	block_idx_t bidx;
-	char print_buffer[BLOCK_SIZE + 1];
-	print_buffer[BLOCK_SIZE] = '\0';
+	block_buffer2[BLOCK_SIZE] = '\0';
 
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
@@ -1217,12 +1358,11 @@ int do_cat(char *path)
 
 	block_num = ((inode.size - 1) >> BLOCK_SIZE_SHIFT) + 1;
 
-	printk("\n");
 	for(int i = 0; i < block_num; i++)
 	{
-		bidx = find_block(&inode, i, (uint8_t *)print_buffer);
-		get_page(bidx, (uint8_t *)print_buffer);
-		printk("%s",print_buffer);
+		bidx = find_block(&inode, i, (uint8_t *)block_buffer2);
+		get_page(bidx, (uint8_t *)block_buffer2);
+		printk("%s",block_buffer2);
 	}
 
 	return 0;

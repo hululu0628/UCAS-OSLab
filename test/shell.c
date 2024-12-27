@@ -47,8 +47,13 @@ enum cmdtype
 	CLEAR,
 	TASKSET,
 	MKDIR,
+	RMDIR,
 	CD,
-	LS
+	LS,
+	TOUCH,
+	RM,
+	CAT,
+	LN
 };
 
 typedef struct CMD
@@ -160,6 +165,14 @@ int main(void)
 					sys_mkdir(cmd.argv[0]);
 				}
 				break;
+			case RMDIR:
+				if(cmd.argc != 1)
+					printf("ERROR\n");
+				else
+				{
+					sys_rmdir(cmd.argv[0]);
+				}
+				break;
 			case CD:
 				if(cmd.argc != 1)
 					printf("ERROR\n");
@@ -170,9 +183,55 @@ int main(void)
 				break;
 			case LS:
 				if(cmd.argc == 0)
-					sys_ls(".", 0);
+					sys_ls(".", NORMAL_LIST);
 				else if(cmd.argc == 1)
-					sys_ls(cmd.argv[0], 0);
+				{
+					if(strcmp(cmd.argv[0], "-l") == 0)
+						sys_ls(".", LONG_LIST);
+					else
+						sys_ls(cmd.argv[0], NORMAL_LIST);
+				}
+				else if(cmd.argc == 2)
+				{
+					if(strcmp(cmd.argv[0], "-l") == 0)
+						sys_ls(cmd.argv[1], LONG_LIST);
+					else if(strcmp(cmd.argv[1], "-l") == 0)
+						sys_ls(cmd.argv[0], LONG_LIST);
+				}
+				else
+					printf("ERROR\n");
+				break;
+			case TOUCH:
+				if(cmd.argc != 1)
+					printf("ERROR\n");
+				else
+				{
+					sys_touch(cmd.argv[0]);
+				}
+				break;
+			case RM:
+				if(cmd.argc != 1)
+					printf("ERROR\n");
+				else
+				{
+					sys_rm(cmd.argv[0]);
+				}
+				break;
+			case CAT:
+				if(cmd.argc != 1)
+					printf("ERROR\n");
+				else
+				{
+					sys_cat(cmd.argv[0]);
+				}
+				break;
+			case LN:
+				if(cmd.argc != 2)
+					printf("ERROR\n");
+				else
+				{
+					sys_ln(cmd.argv[0], cmd.argv[1]);
+				}
 				break;
 			default: printf("Unknown command\n");break;
 			}
@@ -224,10 +283,20 @@ void gettoken(void)
 		cmd.type = TASKSET;
 	else if(strcmp(token,"mkdir") == 0)
 		cmd.type = MKDIR;
+	else if(strcmp(token,"rmdir") == 0)
+		cmd.type = RMDIR;
 	else if(strcmp(token,"cd") == 0)
 		cmd.type = CD;
 	else if(strcmp(token,"ls") == 0)
 		cmd.type = LS;
+	else if(strcmp(token,"touch") == 0)
+		cmd.type = TOUCH;
+	else if(strcmp(token,"rm") == 0)
+		cmd.type = RM;
+	else if(strcmp(token,"cat") == 0)
+		cmd.type = CAT;
+	else if(strcmp(token,"ln") == 0)
+		cmd.type = LN;
 	else
 		cmd.type = UNKNOWN;
 
@@ -248,10 +317,20 @@ void gettoken(void)
 			cmd.type = TASKSET;
 		else if(strcmp(token,"mkdir") == 0)
 			cmd.type = MKDIR;
+		else if(strcmp(token,"rmdir") == 0)
+			cmd.type = RMDIR;
 		else if(strcmp(token,"cd") == 0)
 			cmd.type = CD;
 		else if(strcmp(token,"ls") == 0)
 			cmd.type = LS;
+		else if(strcmp(token,"touch") == 0)
+			cmd.type = TOUCH;
+		else if(strcmp(token,"rm") == 0)
+			cmd.type = RM;
+		else if(strcmp(token,"cat") == 0)
+			cmd.type = CAT;
+		else if(strcmp(token,"ln") == 0)
+			cmd.type = LN;
 		else
 			cmd.type = UNKNOWN;
 

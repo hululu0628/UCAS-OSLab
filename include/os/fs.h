@@ -4,7 +4,7 @@
 #include <type.h>
 #include <os/task.h>
 
-#define FS_SIZE 0x2000000	// 32MB
+#define FS_SIZE 0x10000000	// 256MB
 #define SECTOR_SIZE 512
 #define BLOCK_SIZE 4096
 #define BLOCK_SIZE_SHIFT 12
@@ -107,6 +107,11 @@ typedef struct proc_fd
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
+
+/* options for ls */
+#define NORMAL_LIST	0
+#define LONG_LIST	1
+
 
 extern unsigned long superblock_id;
 extern superblock_t superblock;

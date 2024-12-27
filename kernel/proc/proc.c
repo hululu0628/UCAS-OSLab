@@ -240,6 +240,12 @@ pid_t do_fork(void)
 
 	strcpy(pcb[pid - 1].path, pcb[current_running->pid - 1].path);
 	pcb[pid - 1].proc_dir_inode = pcb[current_running->pid - 1].proc_dir_inode;
+	for(int i = 0; i < NUM_PROC_FD; i++)
+	{
+		pcb[pid - 1].fd_array[i].fd_mode = 0;
+		pcb[pid - 1].fd_array[i].fdesc_idx = -1;
+		pcb[pid - 1].fd_array[i].pos = 0;
+	}
 
 	tcb[i].status = TASK_READY;
 	addToQueue(&tcb[i].list,&ready_queue);
@@ -404,13 +410,6 @@ int do_kill(pid_t pid)
 			}
 		}
 		freeQueueToReady(&pcb[pid - 1].wait_list);
-
-		for(int i = 0; i < NUM_PROC_FD; i++)
-		{
-			pcb[pid - 1].fd_array[i].fd_mode = 0;
-			pcb[pid - 1].fd_array[i].fdesc_idx = -1;
-			pcb[pid - 1].fd_array[i].pos = 0;
-		}
 
 		// 多把锁
 		for(int i = 0; i < LOCK_NUM; i++)
