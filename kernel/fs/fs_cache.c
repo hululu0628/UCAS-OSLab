@@ -7,11 +7,11 @@
 
 static uint8_t block_buffer[BLOCK_SIZE];
 
-d_cache_t d_cache[D_CACHE_NUM];
 p_cache_t p_cache[P_CACHE_NUM];
-int d_lru, p_lru;
-int d_used, p_used;
+int p_lru;
+int p_used;
 
+inode_idx_t vm_inode;
 int page_cache_policy = WRITE_THROUGH;
 uint64_t write_back_freq = 30;
 
@@ -256,10 +256,31 @@ void write_page(block_idx_t idx, uint8_t *data)
 	}
 }
 
-void do_fsync()
+void update_cache()
 {
-	if(page_cache_policy == WRITE_BACK)
+	uint8_t * p_array;
+	for(int i = 0; i < P_CACHE_NUM; i++)
 	{
-		;
+		if(p_cache[i].ct & (LINE_DIRTY | LINE_VALID))
+		{
+			p_array = (uint8_t *)(D_CACHE_ADDR + (p_cache[i].cache_idx << BLOCK_SIZE_SHIFT));
+			bios_sd_write(kva2pa((uintptr_t)p_array), 8, 
+				superblock.start_sector + (p_cache[i].start_idx << 3));
+			p_cache[i].ct = LINE_VALID;
+		}
 	}
+}
+
+void refresh_cache()
+{
+	update_cache();
+	init_cache();
+}
+
+void change_policy(int policy, int time)
+{
+	page_cache_policy = policy;
+	write_back_freq = time;
+	if(policy == WRITE_THROUGH)
+		update_cache();
 }

@@ -46,6 +46,8 @@ enum cmdtype
 	KILL,
 	CLEAR,
 	TASKSET,
+	MKFS,
+	STATFS,
 	MKDIR,
 	RMDIR,
 	CD,
@@ -155,6 +157,22 @@ int main(void)
 						pid = sys_taskset(cmd.argc, (char **)cmd.argv);
 						sys_waitpid(pid);
 					}
+				}
+				break;
+			case MKFS:
+				if(cmd.argc != 0)
+					printf("ERROR\n");
+				else
+				{
+					sys_mkfs();
+				}
+				break;
+			case STATFS:
+				if(cmd.argc != 0)
+					printf("ERROR\n");
+				else
+				{
+					sys_statfs();
 				}
 				break;
 			case MKDIR:
@@ -281,6 +299,10 @@ void gettoken(void)
 		cmd.type = CLEAR;
 	else if(strcmp(token,"taskset") == 0)
 		cmd.type = TASKSET;
+	else if(strcmp(token,"mkfs") == 0)
+		cmd.type = MKFS;
+	else if(strcmp(token,"statfs") == 0)
+		cmd.type = STATFS;
 	else if(strcmp(token,"mkdir") == 0)
 		cmd.type = MKDIR;
 	else if(strcmp(token,"rmdir") == 0)
@@ -315,6 +337,10 @@ void gettoken(void)
 			cmd.type = CLEAR;
 		else if(strcmp(token,"taskset") == 0)
 			cmd.type = TASKSET;
+		else if(strcmp(token,"mkfs") == 0)
+			cmd.type = MKFS;
+		else if(strcmp(token,"statfs") == 0)
+			cmd.type = STATFS;
 		else if(strcmp(token,"mkdir") == 0)
 			cmd.type = MKDIR;
 		else if(strcmp(token,"rmdir") == 0)

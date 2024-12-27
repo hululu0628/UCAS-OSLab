@@ -49,6 +49,8 @@ void do_scheduler(void)
 	// check_send_recv();
 	/************************************************************/
 
+	do_fsync();
+
 	// TODO: [p2-task1] Modify the current_running pointer.
 	int current_cpuid = get_current_cpu_id();
 	tcb_t * prev_thread = current_running;

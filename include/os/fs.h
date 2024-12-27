@@ -4,7 +4,7 @@
 #include <type.h>
 #include <os/task.h>
 
-#define FS_SIZE 0x10000000	// 256MB
+#define FS_SIZE 0x2000000	// 32MB
 #define SECTOR_SIZE 512
 #define BLOCK_SIZE 4096
 #define BLOCK_SIZE_SHIFT 12
@@ -133,9 +133,11 @@ extern int do_write(int fd, char *buff, int length);
 extern int do_close(int fd);
 extern int do_ln(char *src_path, char *dst_path);
 extern int do_rm(char *path);
-extern int do_lseek(int fd, int offset, int whence);
+extern int do_lseek(int fd, long offset, int whence);
 extern int do_touch(char *path);
 extern int do_cat(char *path);
 extern int do_getcwd(char *buff);
+
+extern void do_fsync(void);
 
 #endif

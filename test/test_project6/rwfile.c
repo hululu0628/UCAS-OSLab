@@ -11,7 +11,7 @@ int main(void)
 	int fd = sys_open("1.txt", O_RDWR);
 
 	if(fd == -1)
-		return 1;
+		return -1;
 
 	// write 'hello world!' * 10
 	for (int i = 0; i < 10; i++)

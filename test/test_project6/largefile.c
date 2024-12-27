@@ -13,7 +13,7 @@ int main(void)
 	int fd = sys_open("1.txt", O_RDWR);
 
 	if(fd == -1)
-		return 1;
+		return -1;
 
 	sys_write(fd, "hello world!\n", 13);
 

@@ -274,6 +274,7 @@ static void init_syscall(void)
 	syscall[SYSCALL_FS_RM]		= (long (*)())do_rm;
 	syscall[SYSCALL_FS_LSEEK]	= (long (*)())do_lseek;
 	syscall[SYSCALL_FS_GETCWD]	= (long (*)())do_getcwd;
+	syscall[SYSCALL_FS_CACHE_CHANGE] = (long (*)())change_policy;
 
 }
 

@@ -77,12 +77,16 @@ typedef struct p_cache_line
 extern p_cache_t p_cache[P_CACHE_NUM];
 extern int p_lru;
 
+extern inode_idx_t vm_inode;
 extern int page_cache_policy;
 extern uint64_t write_back_freq;
+
+extern void change_policy(int policy, int time);
+extern void refresh_cache(void);
+extern void update_cache(void);
 
 extern void get_page(block_idx_t idx, uint8_t * res);
 extern void write_page(block_idx_t idx, uint8_t * data);
 
-extern void do_fsync(void);
 
 #endif

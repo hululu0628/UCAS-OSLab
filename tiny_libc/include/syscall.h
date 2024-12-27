@@ -66,5 +66,6 @@
 #define SYSCALL_FS_RM 		78
 #define SYSCALL_FS_LSEEK 	79
 #define SYSCALL_FS_GETCWD	80
+#define SYSCALL_FS_CACHE_CHANGE 81
 
 #endif

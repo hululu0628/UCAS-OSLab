@@ -99,10 +99,11 @@ int sys_write(int fd, char *buff, int length);
 int sys_close(int fd);
 int sys_ln(char *src_path, char *dst_path);
 int sys_rm(char *path);
-int sys_lseek(int fd, int offset, int whence);
+int sys_lseek(int fd, long offset, int whence);
 int sys_touch(char *path);
 int sys_cat(char *path);
 int sys_getcwd(char *buff);
+void sys_cache_change(int policy, int time);
 /************************************************************/
 
 #endif

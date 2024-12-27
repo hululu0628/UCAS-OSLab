@@ -7,6 +7,7 @@
 #include <os/swap.h>
 #include <printk.h>
 #include <os/string.h>
+#include <os/time.h>
 
 static fdesc_t fdesc_array[NUM_FDESCS];
 
@@ -24,7 +25,15 @@ void init_fs(void)
 {
 	printk("Initializing File System...\n");
 	superblock_id = swap_id_start + (SWAP_SPACE >> 6);
-	do_mkfs();
+	if(do_mkfs() == 0)
+	{
+		do_mkdir("proc");
+		do_cd("proc");
+		do_mkdir("sys");
+		do_cd("sys");
+		do_touch("vm");
+		do_cd("../..");
+	}
 }
 
 static int fill_block(int start, int length, uint8_t * buffer)
@@ -687,7 +696,13 @@ int do_mkfs(void)
 int do_statfs(void)
 {
 	// TODO [P6-task1]: Implement do_statfs
-
+	printk("     magic number: 0x%lx\n",superblock.magic_num);
+	printk("     block size: %ld, total block number: %ld\n",superblock.block_size,superblock.total_blocks);
+	printk("     inode number: %ld\n",superblock.total_inode);
+	printk("     start sector for fs: %ld\n",superblock.start_sector);
+	printk("     inode map offset(block): %ld\n",superblock.offset_imap);
+	printk("     inode array offset(block): %ld\n",superblock.offset_iarray);
+	printk("     block map offset(block): %ld\n",superblock.offset_bmap);
 	return 0;  // do_statfs succeeds
 }
 
@@ -789,6 +804,7 @@ int do_rmdir(char *path)
 	inode_idx_t inode_idx;
 	inode_idx_t cinode_idx;
 	inode_t inode;
+	block_idx_t bidx;
 	inode_idx = pcb[current_running->pid - 1].proc_dir_inode;
 
 	get_dentry(inode_idx, path, &dentry, TYPE_DIR);
@@ -805,7 +821,8 @@ int do_rmdir(char *path)
 		int block_num = (inode.size != 0) ? (((inode.size - 1) >> BLOCK_SIZE_SHIFT) + 1) : 0;
 		for(int i = 0; i < block_num; i++)
 		{
-			free_block(find_block(&inode, i, block_buffer));
+			if((bidx = find_block(&inode, i, block_buffer)) != -1)
+				free_block(bidx);
 		}
 		inode.size = 0;
 		for(int i = 0; i < NUM_FDESCS; i++)
@@ -816,6 +833,7 @@ int do_rmdir(char *path)
 		free_inode(inode_idx);
 	}
 	
+	refresh_cache();
 
 	return 0;  // do_rmdir succeeds
 }
@@ -937,19 +955,22 @@ int do_open(char *path, int mode)
 		strncpy(buff, path + i, j);
 		buff[j] = '\0';
 
-		if((path+i)[j] != '\0')
+		if(get_dentry(inode_idx, buff, &dentry, TYPE_DIR) == -1)
 		{
-			if(get_dentry(inode_idx, buff, &dentry, TYPE_DIR) == -1)
+			if((path+i)[j] != '\0')
+				i += (j + 1);
+			else
+				i += j;
+
+			if((j = strchr(path + i, '/')) != 0)
 			{
-				printk("ERROR: path error\n");
+				printk("ERROR: can not find \"%s\"\n",buff);
 				return -1;
 			}
-		}
-		else
-		{
+
 			if(get_dentry(inode_idx, buff, &dentry, TYPE_FILE) == -1)
 			{
-				printk("ERROR: no such file\n");
+				printk("ERROR: can not find \"%s\"\n",buff);
 				return -1;
 			}
 		}
@@ -1150,7 +1171,7 @@ int do_ln(char *src_path, char *dst_path)
 
 		if(get_dentry(sinode_idx, sbuff, &sdentry, TYPE_DIR) == -1)
 		{
-			if((dst_path+i)[j] != '\0')
+			if((src_path+i)[j] != '\0')
 				i += (j + 1);
 			else
 				i += j;
@@ -1221,22 +1242,13 @@ int do_rm(char *path)
 	inode_idx_t p_inode_idx = pcb[current_running->pid - 1].proc_dir_inode;
 	inode_idx_t inode_idx;
 	inode_t p_inode, inode;
+	block_idx_t bidx;
+	dentry_t dentry;
 	get_page(superblock.offset_iarray + ((p_inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 	p_inode = ((inode_t *)block_buffer)[p_inode_idx & 0x1f];
 
-	for(int i = 0; i < MAX_DIRECT_BLOCK; i++)
-	{
-		get_page(p_inode.direct[i], block_buffer);
-		for(int j = 0; j < DENTRYS_ONE_PAGE; j++)
-		{
-			if(((dentry_t *)block_buffer)[j].valid &&
-			   strcmp(((dentry_t *)block_buffer)[j].name, path) == 0)
-			{
-				((dentry_t *)block_buffer)[j].valid = 0;
-				inode_idx = ((dentry_t *)block_buffer)[j].inode;
-			}
-		}
-	}
+	get_dentry(p_inode_idx, path, &dentry, TYPE_FILE);
+	inode_idx = dentry.inode;
 
 	// modify inode.dentry_num inode.size
 	delete_dentry(p_inode_idx, path, TYPE_FILE);
@@ -1250,7 +1262,8 @@ int do_rm(char *path)
 		int block_num = (inode.size != 0) ? (((inode.size - 1) >> BLOCK_SIZE_SHIFT) + 1) : 0;
 		for(int i = 0; i < block_num; i++)
 		{
-			free_block(find_block(&inode, i, block_buffer));
+			if((bidx = find_block(&inode, i, block_buffer)) != -1)
+				free_block(bidx);
 		}
 		inode.size = 0;
 		for(int i = 0; i < NUM_FDESCS; i++)
@@ -1261,10 +1274,12 @@ int do_rm(char *path)
 		free_inode(inode_idx);
 	}
 
+	refresh_cache();
+
 	return 0;  // do_rm succeeds 
 }
 
-int do_lseek(int fd, int offset, int whence)
+int do_lseek(int fd, long offset, int whence)
 {
 	// TODO [P6-task2]: Implement do_lseek
 	int pid = current_running->pid;
@@ -1372,4 +1387,19 @@ int do_getcwd(char *buff)
 {
 	strcpy(buff, pcb[current_running->pid - 1].path);
 	return 0;
+}
+
+void do_fsync()
+{
+	static uint64_t time = 0;
+	uint64_t curr_time;
+	if(page_cache_policy == WRITE_BACK)
+	{
+		curr_time = get_timer();
+		if(curr_time - time > 30)
+			update_cache();
+		time = curr_time;
+	}
+	else
+		time = get_timer();
 }

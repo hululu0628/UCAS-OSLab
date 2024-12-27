@@ -17,6 +17,10 @@
 #define NORMAL_LIST	0
 #define LONG_LIST	1
 
+/* cache policy */
+#define WRITE_BACK	1
+#define WRITE_THROUGH	2
+
 int printf(const char *fmt, ...);
 int vprintf(const char *fmt, va_list va);
 
