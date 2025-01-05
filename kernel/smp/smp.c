@@ -18,7 +18,6 @@ void init_proc0(int cpuid)
 	pid0_pcb[cpuid].pgdir = (PTE *)pa2kva(PGDIR_PA);
 	pid0_pcb[cpuid].task_id = -1;
 	pid0_pcb[cpuid].tcb_num = 1;
-
 	pid0_tcb[cpuid].pid = 0;
 	pid0_tcb[cpuid].tid = 0;
 	pid0_tcb[cpuid].kernel_sp = INIT_KERNEL_STACK + 2 * (1 + cpuid) * PAGE_SIZE;

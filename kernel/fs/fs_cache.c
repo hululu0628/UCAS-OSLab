@@ -53,7 +53,7 @@ void get_page(block_idx_t idx, uint8_t *res)
 	{
 		// refresh lru queue
 		curr = i;
-		prev = i - 1;
+		prev = p_cache[curr].prev;
 		p_cache[prev].next = p_cache[curr].next;
 		p_cache[p_cache[curr].next].prev = prev;
 
@@ -162,7 +162,7 @@ void write_page(block_idx_t idx, uint8_t *data)
 	{
 		// refresh lru queue
 		curr = i;
-		prev = i - 1;
+		prev = p_cache[curr].prev;
 		p_cache[prev].next = p_cache[curr].next;
 		p_cache[p_cache[curr].next].prev = prev;
 

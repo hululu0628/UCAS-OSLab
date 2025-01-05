@@ -1,3 +1,4 @@
+#include "os/smp.h"
 #include <os/fs_cache.h>
 #include <os/proc.h>
 #include <os/kernel.h>
@@ -25,15 +26,7 @@ void init_fs(void)
 {
 	printk("Initializing File System...\n");
 	superblock_id = swap_id_start + (SWAP_SPACE >> 6);
-	if(do_mkfs() == 0)
-	{
-		do_mkdir("proc");
-		do_cd("proc");
-		do_mkdir("sys");
-		do_cd("sys");
-		do_touch("vm");
-		do_cd("../..");
-	}
+	do_mkfs();
 }
 
 static int fill_block(int start, int length, uint8_t * buffer)
@@ -964,13 +957,13 @@ int do_open(char *path, int mode)
 
 			if((j = strchr(path + i, '/')) != 0)
 			{
-				printk("ERROR: can not find \"%s\"\n",buff);
+				// printk("ERROR: can not find \"%s\"\n",buff);
 				return -1;
 			}
 
 			if(get_dentry(inode_idx, buff, &dentry, TYPE_FILE) == -1)
 			{
-				printk("ERROR: can not find \"%s\"\n",buff);
+				// printk("ERROR: can not find \"%s\"\n",buff);
 				return -1;
 			}
 		}
@@ -1397,8 +1390,10 @@ void do_fsync()
 	{
 		curr_time = get_timer();
 		if(curr_time - time > 30)
+		{
 			update_cache();
-		time = curr_time;
+			time = get_timer();
+		}
 	}
 	else
 		time = get_timer();

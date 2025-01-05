@@ -5,6 +5,7 @@
 
 int main(int argc, char *argv[])
 {
+	sys_move_cursor(0, 0);
 	if(argc < 2)
 	{
 		printf("Illegal input\n");
@@ -17,6 +18,7 @@ int main(int argc, char *argv[])
 		sys_lseek(fd, 0, SEEK_SET);
 		sys_write(fd, "page_cache_policy = write through\n", 34);
 		sys_cache_change(WRITE_THROUGH, 0);
+		printf("cache policy: write through\n");
 	}
 	else if(strcmp(argv[1], "-b") == 0 && argc == 3)
 	{
@@ -26,6 +28,8 @@ int main(int argc, char *argv[])
 		sys_write(fd, argv[2], strlen(argv[2]));
 		sys_write(fd, "\n", 1);
 		sys_cache_change(WRITE_BACK, atoi(argv[2]));
+
+		printf("cache policy: write back, update frequency: %ds\n", atoi(argv[2]));
 	}
 	else
 	{
