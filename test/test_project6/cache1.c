@@ -10,9 +10,9 @@ int main()
 	if(fd == -1)
 		return -1;
 
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < 16; i++)
 	{
-		sys_lseek(fd, i << 12, SEEK_SET);
+		sys_lseek(fd, i << 20, SEEK_SET);
 		sys_write(fd,"hello world!\n", 13);
 		sys_move_cursor(0, 0);
 		printf("%d\n",i);

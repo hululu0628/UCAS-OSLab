@@ -16,9 +16,9 @@ int main()
 	clock_t start, end;
 
 	start = clock();
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < 16; i++)
 	{
-		sys_lseek(fd, i << 12, SEEK_SET);
+		sys_lseek(fd, i << 20, SEEK_SET);
 		sys_read(fd,buff, 13);
 	}
 	end = clock();
@@ -27,9 +27,9 @@ int main()
 
 
 	start = clock();
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < 16; i++)
 	{
-		sys_lseek(fd, i << 12, SEEK_SET);
+		sys_lseek(fd, i << 20, SEEK_SET);
 		sys_read(fd,buff, 13);
 	}
 	end = clock();

@@ -34,8 +34,8 @@ MINICOM         = minicom
 # Build/Debug Flags and Variables
 # -----------------------------------------------------------------------
 
-CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3 -mabi=lp64
-# CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany
+# CFLAGS          = -O0 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany -ggdb3 -mabi=lp64
+CFLAGS          = -O2 -fno-builtin -nostdlib -nostdinc -Wall -mcmodel=medany
 
 BOOT_INCLUDE    = -I$(DIR_ARCH)/include
 BOOT_CFLAGS     = $(CFLAGS) $(BOOT_INCLUDE) -Wl,--defsym=TEXT_START=$(BOOTLOADER_ENTRYPOINT) -T riscv.lds

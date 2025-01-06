@@ -48,8 +48,8 @@ typedef struct superblock {
 	uint64_t iarray_size;
 	uint64_t data_size;
 	uint64_t start_sector;		// 0: super block
-	// uint64_t available_blocks;
-	// uint64_t available_inode;
+	uint64_t available_blocks;
+	uint64_t available_inode;
 	uint64_t offset_bmap;		// block
 	uint64_t offset_imap;
 	uint64_t offset_iarray;

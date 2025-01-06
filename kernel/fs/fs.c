@@ -110,6 +110,11 @@ static int allocate_block(int num, block_idx_t * bit_idx)
 	bios_sd_write(kva2pa((uintptr_t)block_buffer), 8, 
 		superblock.start_sector + ((superblock.offset_bmap + (bmap_ptr_byte >> BLOCK_SIZE_SHIFT)) << 3));
 	*bit_idx = bmap_ptr;
+
+	superblock.available_blocks -= num;
+	*((superblock_t *)block_buffer) = superblock;
+	bios_sd_write(kva2pa((uintptr_t)block_buffer), 1, superblock_id);
+
 	return 0;
 }
 
@@ -141,6 +146,11 @@ static int allocate_inode(int num, inode_idx_t * bit_idx)
 	bios_sd_write(kva2pa((uintptr_t)block_buffer), 8, 
 		superblock.start_sector + ((superblock.offset_imap + (imap_ptr_byte >> BLOCK_SIZE_SHIFT)) << 3));
 	*bit_idx = imap_ptr;
+
+	superblock.available_inode -= num;
+	*((superblock_t *)block_buffer) = superblock;
+	bios_sd_write(kva2pa((uintptr_t)block_buffer), 1, superblock_id);
+
 	return 0;
 }
 
@@ -154,6 +164,11 @@ static int free_block(uint32_t bit_idx)
 	clear_block(bit_idx, 1, block_buffer);
 	bios_sd_write(kva2pa((uintptr_t)block_buffer), 8, 
 		superblock.start_sector + ((superblock.offset_bmap + block_idx) << 3));
+	
+	superblock.available_blocks += 1;
+	*((superblock_t *)block_buffer) = superblock;
+	bios_sd_write(kva2pa((uintptr_t)block_buffer), 1, superblock_id);
+
 	return 0;
 }
 
@@ -167,6 +182,11 @@ static int free_inode(uint32_t bit_idx)
 	clear_block(bit_idx, 1, block_buffer);
 	bios_sd_write(kva2pa((uintptr_t)block_buffer), 8, 
 		superblock.start_sector + ((superblock.offset_imap + block_idx) << 3));
+	
+	superblock.available_inode += 1;
+	*((superblock_t *)block_buffer) = superblock;
+	bios_sd_write(kva2pa((uintptr_t)block_buffer), 1, superblock_id);
+	
 	return 0;
 }
 
@@ -238,7 +258,7 @@ block_idx_t extend_file(inode_idx_t i_idx, block_idx_t b_idx, uint8_t * block_bu
 	inode_t inode;
 
 	get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t*)block_buffer)[i_idx & 0x1f];
+	inode = ((inode_t*)block_buffer)[i_idx & (INODE_ONE_PAGE - 1)];
 
 	next_block = b_idx;
 
@@ -248,7 +268,7 @@ block_idx_t extend_file(inode_idx_t i_idx, block_idx_t b_idx, uint8_t * block_bu
 
 		inode.direct[next_block] = bidx;
 		get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-		((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
+		((inode_t*)block_buffer)[i_idx & (INODE_ONE_PAGE - 1)] = inode;
 		write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 		
 		return bidx;
@@ -262,7 +282,7 @@ block_idx_t extend_file(inode_idx_t i_idx, block_idx_t b_idx, uint8_t * block_bu
 			allocate_block(1, &bidx);
 			inode.indirect = bidx;
 			get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-			((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
+			((inode_t*)block_buffer)[i_idx & (INODE_ONE_PAGE - 1)] = inode;
 			write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
 			get_page(inode.indirect, block_buffer);
@@ -291,7 +311,7 @@ block_idx_t extend_file(inode_idx_t i_idx, block_idx_t b_idx, uint8_t * block_bu
 			allocate_block(1, &bidx);
 			inode.double_indirect = bidx;
 			get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-			((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
+			((inode_t*)block_buffer)[i_idx & (INODE_ONE_PAGE - 1)] = inode;
 			write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
 			get_page(inode.double_indirect, block_buffer);
@@ -340,7 +360,7 @@ block_idx_t extend_file(inode_idx_t i_idx, block_idx_t b_idx, uint8_t * block_bu
 			allocate_block(1, &bidx);
 			inode.triple_indirect = bidx;
 			get_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-			((inode_t*)block_buffer)[i_idx & 0x1f] = inode;
+			((inode_t*)block_buffer)[i_idx & (INODE_ONE_PAGE - 1)] = inode;
 			write_page(superblock.offset_iarray + ((i_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
 			get_page(inode.triple_indirect, block_buffer);
@@ -404,7 +424,7 @@ int get_dentry(inode_idx_t inode_idx, char * name, dentry_t * dentry, ftype_t ty
 	dentry_t * dentry_array;
 	inode_t inode;
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	dentry_num = inode.dentry_num;
 	block_num = inode.size / BLOCK_SIZE;
@@ -442,7 +462,7 @@ int delete_dentry(inode_idx_t inode_idx, char * name, ftype_t type)
 	dentry_t * dentry_array;
 	inode_t inode;
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	dentry_num = inode.dentry_num;
 	block_num = inode.size / BLOCK_SIZE;
@@ -469,7 +489,7 @@ int delete_dentry(inode_idx_t inode_idx, char * name, ftype_t type)
 
 					inode.dentry_num--;
 					get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-					((inode_t *)block_buffer)[inode_idx & 0x1f].dentry_num--;
+					((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)].dentry_num--;
 					write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 					return 0;
 				}
@@ -491,7 +511,7 @@ int create_dentry(inode_idx_t inode_idx, dentry_t * dentry)
 	dentry_t * dentry_array;
 	inode_t inode;
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	dentry_num = inode.dentry_num;
 	block_num = inode.size / BLOCK_SIZE;
@@ -512,7 +532,7 @@ int create_dentry(inode_idx_t inode_idx, dentry_t * dentry)
 				write_page(block_idx, block_buffer);
 
 				get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-				((inode_t *)block_buffer)[inode_idx & 0x1f].dentry_num++;
+				((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)].dentry_num++;
 				write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 					
 				return 0;
@@ -559,8 +579,8 @@ int create_dentry(inode_idx_t inode_idx, dentry_t * dentry)
 	}
 	
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	((inode_t *)block_buffer)[inode_idx & 0x1f].dentry_num = inode.dentry_num;
-	((inode_t *)block_buffer)[inode_idx & 0x1f].size = inode.size;
+	((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)].dentry_num = inode.dentry_num;
+	((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)].size = inode.size;
 	write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
 	return 0;
@@ -586,7 +606,7 @@ int create_dir(uint64_t inode_idx, uint64_t pinode_idx)
 	inode.double_indirect = -1;
 	inode.triple_indirect = -1;
 
-	((inode_t *)block_buffer)[inode_idx & 0x1f] = inode;
+	((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)] = inode;
 
 	write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
@@ -638,6 +658,8 @@ int do_mkfs(void)
 	superblock.offset_imap = superblock.offset_bmap + ((superblock.total_blocks + BLOCK_SIZE) >> BLOCK_SIZE_SHIFT);	// div 512
 	superblock.offset_iarray = superblock.offset_imap + ((MAX_INODE + BLOCK_SIZE) >> BLOCK_SIZE_SHIFT);
 	superblock.offset_data = superblock.offset_iarray + ((MAX_INODE * sizeof(inode_t) + BLOCK_SIZE) >> BLOCK_SIZE_SHIFT);
+	superblock.available_blocks = superblock.total_blocks;
+	superblock.available_inode = MAX_INODE;
 	*((superblock_t *)block_buffer) = superblock;
 
 	printk("     magic number: 0x%lx\n",superblock.magic_num);
@@ -689,13 +711,9 @@ int do_mkfs(void)
 int do_statfs(void)
 {
 	// TODO [P6-task1]: Implement do_statfs
-	printk("     magic number: 0x%lx\n",superblock.magic_num);
-	printk("     block size: %ld, total block number: %ld\n",superblock.block_size,superblock.total_blocks);
-	printk("     inode number: %ld\n",superblock.total_inode);
-	printk("     start sector for fs: %ld\n",superblock.start_sector);
-	printk("     inode map offset(block): %ld\n",superblock.offset_imap);
-	printk("     inode array offset(block): %ld\n",superblock.offset_iarray);
-	printk("     block map offset(block): %ld\n",superblock.offset_bmap);
+	printk("file system size: %ld B\n",superblock.total_blocks << BLOCK_SIZE_SHIFT);
+	printk("available block: %ld\n",superblock.available_blocks);
+	printk("available inode: %ld\n",superblock.available_inode);
 	return 0;  // do_statfs succeeds
 }
 
@@ -806,7 +824,9 @@ int do_rmdir(char *path)
 	delete_dentry(inode_idx, path, TYPE_DIR);
 
 	get_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[cinode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[cinode_idx & (INODE_ONE_PAGE - 1)];
+
+	// if
 
 	inode.hard_link_num--;
 	if(inode.hard_link_num == 0)
@@ -867,7 +887,7 @@ int do_ls(char *path, int option)
 	}
 
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	dentry_num = inode.dentry_num;
 	block_num = ((inode.size - 1) >> BLOCK_SIZE_SHIFT) + 1;
@@ -886,7 +906,7 @@ int do_ls(char *path, int option)
 				{
 					cinode_idx = dentry_array[j].inode;
 					get_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-					cinode = ((inode_t *)block_buffer)[cinode_idx & 0x1f];
+					cinode = ((inode_t *)block_buffer)[cinode_idx & (INODE_ONE_PAGE - 1)];
 					
 					strcpy(buff, "----------");
 					if(cinode.type == TYPE_DIR)
@@ -1044,7 +1064,7 @@ int do_read(int fd, char *buff, int length)
 
 	inode_idx = fdesc_array[fdesc_idx].inode;
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	if(pos + length >= inode.size)
 		length = inode.size - pos;
@@ -1093,7 +1113,7 @@ int do_write(int fd, char *buff, int length)
 
 	inode_idx = fdesc_array[fdesc_idx].inode;
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	start_block = pos >> BLOCK_SIZE_SHIFT;
 	end_block = (pos + length) >> BLOCK_SIZE_SHIFT;
@@ -1121,7 +1141,7 @@ int do_write(int fd, char *buff, int length)
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 	if(new_size > inode.size)
 	{
-		((inode_t *)block_buffer)[inode_idx & 0x1f].size = new_size;
+		((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)].size = new_size;
 		write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 	}
 	pcb[current_running->pid-1].fd_array[fd].pos = new_size;
@@ -1219,6 +1239,10 @@ int do_ln(char *src_path, char *dst_path)
 			i += j;
 	}
 
+	get_page(superblock.offset_iarray + ((sinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+	((inode_t *)block_buffer)[sinode_idx & (INODE_ONE_PAGE - 1)].hard_link_num++;
+	write_page(superblock.offset_iarray + ((sinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+
 	strcpy(dentry.name, dbuff);
 	dentry.type = sdentry.type;
 	dentry.valid = 1;
@@ -1238,7 +1262,7 @@ int do_rm(char *path)
 	block_idx_t bidx;
 	dentry_t dentry;
 	get_page(superblock.offset_iarray + ((p_inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	p_inode = ((inode_t *)block_buffer)[p_inode_idx & 0x1f];
+	p_inode = ((inode_t *)block_buffer)[p_inode_idx & (INODE_ONE_PAGE - 1)];
 
 	get_dentry(p_inode_idx, path, &dentry, TYPE_FILE);
 	inode_idx = dentry.inode;
@@ -1247,7 +1271,7 @@ int do_rm(char *path)
 	delete_dentry(p_inode_idx, path, TYPE_FILE);
 
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	inode.hard_link_num--;
 	if(inode.hard_link_num == 0)
@@ -1266,6 +1290,10 @@ int do_rm(char *path)
 		}
 		free_inode(inode_idx);
 	}
+
+	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
+	((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)] = inode;
+	write_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
 	refresh_cache();
 
@@ -1290,7 +1318,7 @@ int do_lseek(int fd, long offset, int whence)
 			break;
 		case SEEK_END:
 			get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-			inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+			inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 			pcb[pid - 1].fd_array[fd].pos = inode.size + offset;
 			break;
 		default:
@@ -1337,7 +1365,7 @@ int do_touch(char *path)
 	inode.double_indirect = -1;
 	inode.triple_indirect = -1;
 
-	((inode_t *)block_buffer)[cinode_idx & 0x1f] = inode;
+	((inode_t *)block_buffer)[cinode_idx & (INODE_ONE_PAGE - 1)] = inode;
 
 	write_page(superblock.offset_iarray + ((cinode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
 
@@ -1356,13 +1384,13 @@ int do_cat(char *path)
 	block_buffer2[BLOCK_SIZE] = '\0';
 
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	get_dentry(inode_idx, path, &dentry, TYPE_FILE);
 
 	inode_idx = dentry.inode;
 	get_page(superblock.offset_iarray + ((inode_idx * sizeof(inode_t)) >> BLOCK_SIZE_SHIFT), block_buffer);
-	inode = ((inode_t *)block_buffer)[inode_idx & 0x1f];
+	inode = ((inode_t *)block_buffer)[inode_idx & (INODE_ONE_PAGE - 1)];
 
 	block_num = ((inode.size - 1) >> BLOCK_SIZE_SHIFT) + 1;
 
